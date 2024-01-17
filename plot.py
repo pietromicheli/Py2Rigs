@@ -976,7 +976,7 @@ def plot_heatmaps(
     if save: 
         plt.savefig(r"%s/%s.png"%(save_path,name), bbox_inches="tight")
         # plt.close(fig)
-    
+
 def plot_clusters(
     data,
     labels,
@@ -985,7 +985,7 @@ def plot_clusters(
     ylabel='',
     l1loc='upper right',
     l2loc='upper left',
-    groups_name='Group',
+    groups_names=None,
     save=None
 
 ):
@@ -1002,8 +1002,8 @@ def plot_clusters(
     - markers: Array-like
         markers array specifying same values for datapoints you want to draw using the
         same marker.
-    - groups_name: str
-    label prefix for the groups specifyed by the markers. only used if markers is passed
+    - groups_names: list of str
+        label prefix for the groups specifyed by the markers. only used if markers is passed
     - algo: str
         name of the embedding algorithm
     """
@@ -1028,9 +1028,10 @@ def plot_clusters(
 
     fig.patch.set_facecolor("white")
 
+    scatters= []
     for m in np.unique(markers):
 
-        marker = allmarkers[m][0]
+        marker = str(allmarkers[m][0])
         ix = np.where(markers==m)[0]
 
         s = ax.scatter(
@@ -1042,8 +1043,11 @@ def plot_clusters(
             alpha=0.2,
         )
 
+        scatters.append(s)
+
     p = []
     l = []
+    legends = []
     for i,ix in enumerate(np.unique(labels)):
 
         c = clist[ix]*0.7
@@ -1057,30 +1061,30 @@ def plot_clusters(
                         bbox_transform=plt.gca().transAxes
                         )
     ax.add_artist(legend1)
+    legends.append(legend1)
     
     if not singlemarker:
         import matplotlib.lines as mlines
 
         handles = []
-        for m in np.unique(markers):
-            h = mlines.Line2D([], [], marker=m, linestyle='None',
-                          markersize=10, label='%s %d'%(groups_name,i))
+        for m,j in enumerate(np.unique(markers)):
+
+            marker = str(allmarkers[m][0])
+            h = mlines.Line2D([], [], marker=marker, linestyle='None',
+                          markersize=10, label='%s'%(str(groups_names[j])))
             handles.append(h)
         
         legend2 = ax.legend([plt.plot([],[],marker=allmarkers[m][0],color='k', ls="none")[0] for m in np.unique(markers)],
-                            ['%s %d'%(groups_name,i) for i in np.unique(markers)],
+                            ['%s'%(groups_names[i]) for i in np.unique(markers)],
                             bbox_to_anchor=(1.35, 0),
                             bbox_transform=plt.gca().transAxes
                             )
         ax.add_artist(legend2)
-        legends = (legend1,legend2)
-
-    else: legends=(legend1)
-    
+        legends.append(legend2)
 
     ax.set_xlabel(xlabel, fontsize=18)
     ax.set_ylabel(ylabel, fontsize=18)
-    ax.set_title("%d CELLs"%(len(Xax)))
+    ax.set_title("%d ROIs"%(len(Xax)))
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.spines['left'].set_visible(False)
@@ -1090,7 +1094,7 @@ def plot_clusters(
 
     if save!=None:
 
-        plt.savefig(save, bbox_extra_artists=(legends,), bbox_inches='tight')
+        plt.savefig(save, bbox_extra_artists=legends, bbox_inches='tight')
 
 def plot_sparse_noise(
         cells,
@@ -1232,3 +1236,119 @@ def plot_histogram(
     plt.savefig(save_name, bbox_inches='tight')
     plt.show()
     plt.close(fig)
+
+
+# def plot_clusters(
+#     data,
+#     labels,
+#     markers=None,
+#     xlabel='',
+#     ylabel='',
+#     l1loc='upper right',
+#     l2loc='upper left',
+#     groups_name='Group',
+#     save=None
+
+# ):
+    
+#     """
+#     Plot scatterplot of data. 
+#     Each datapoint will be color coded according to label array, and the marker will be
+#     assign accoding to the marker_criteria.
+
+#     - data: Array-like
+#         datapoints to be plotted. Only first 2 dimensions will be plotted
+#     - labels: Array-like
+#         labels array specifying the clusters
+#     - markers: Array-like
+#         markers array specifying same values for datapoints you want to draw using the
+#         same marker.
+#     - groups_name: str
+#     label prefix for the groups specifyed by the markers. only used if markers is passed
+#     - algo: str
+#         name of the embedding algorithm
+#     """
+
+#     clist = np.array(POPS_C)
+#     allmarkers = list(Line2D.markers.items())[2:] 
+#     # random.shuffle(allmarkers)
+#     # random.shuffle(clist)
+
+#     singlemarker = False
+
+#     if markers==None:
+
+#         markers = np.zeros(len(data),int).tolist()
+#         singlemarker = True
+
+#     Xax = data[:, 0]
+#     Yax = data[:, 1]
+
+#     fig = plt.figure(figsize=(7, 5))
+#     ax = fig.add_subplot(111)
+
+#     fig.patch.set_facecolor("white")
+
+#     for m in np.unique(markers):
+
+#         marker = allmarkers[m][0]
+#         ix = np.where(markers==m)[0]
+
+#         s = ax.scatter(
+#             Xax[ix], Yax[ix], 
+#             # edgecolors=clist[labels[ix]],
+#             facecolors=clist[labels[ix]]*0.7,
+#             s=50, 
+#             marker=marker,
+#             alpha=0.2,
+#         )
+
+#     p = []
+#     l = []
+#     for i,ix in enumerate(np.unique(labels)):
+
+#         c = clist[ix]*0.7
+#         p.append(patches.Rectangle((0,0),1,1,fc=c))
+#         l.append("POP %d: %d ROIs"%(i,len(labels[labels==ix])))
+
+#     legend1 = ax.legend(p,
+#                         l,
+#                         # loc=l1loc,
+#                         bbox_to_anchor=(1.35, 1.0),
+#                         bbox_transform=plt.gca().transAxes
+#                         )
+#     ax.add_artist(legend1)
+    
+#     if not singlemarker:
+#         import matplotlib.lines as mlines
+
+#         handles = []
+#         for m in np.unique(markers):
+#             h = mlines.Line2D([], [], marker=m, linestyle='None',
+#                           markersize=10, label='%s %d'%(groups_name,i))
+#             handles.append(h)
+        
+#         legend2 = ax.legend([plt.plot([],[],marker=allmarkers[m][0],color='k', ls="none")[0] for m in np.unique(markers)],
+#                             ['%s %d'%(groups_name,i) for i in np.unique(markers)],
+#                             bbox_to_anchor=(1.35, 0),
+#                             bbox_transform=plt.gca().transAxes
+#                             )
+#         ax.add_artist(legend2)
+#         legends = (legend1,legend2)
+
+#     else: legends=(legend1)
+    
+
+#     ax.set_xlabel(xlabel, fontsize=18)
+#     ax.set_ylabel(ylabel, fontsize=18)
+#     ax.set_title("%d CELLs"%(len(Xax)))
+#     ax.spines['top'].set_visible(False)
+#     ax.spines['right'].set_visible(False)
+#     ax.spines['left'].set_visible(False)
+#     ax.spines['bottom'].set_visible(False)
+
+#     plt.grid('dashed',linewidth = 1.5, alpha = 0.25)
+
+#     if save!=None:
+
+#         plt.savefig(save, bbox_extra_artists=(legends,), bbox_inches='tight')

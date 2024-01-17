@@ -136,7 +136,7 @@ class Batch:
         self, 
         cells_ids=None,
         stim_trials_dict=None, 
-        type="dff", 
+        rtype="norm", 
         normalize="zscore", 
         smooth=True
     ):
@@ -189,7 +189,7 @@ class Batch:
 
                 for trial_name in trials_names:
 
-                    r = average_resp[stim][trial_name]["average_%s" % type]
+                    r = average_resp[stim][trial_name]["%s_avg" %rtype]
 
                     # cut the responses
                     start = average_resp[stim][trial_name]["window"][0]
@@ -209,7 +209,7 @@ class Batch:
 
             elif normalize == "zscore":
 
-                concat_stims = z_norm(concat_stims, True)
+                concat_stims = z_norm(concat_stims)
 
             fingerprints.append(concat_stims)
 
@@ -231,8 +231,9 @@ class Batch:
         k=None,
         markers=True,
         save_name=None,
-        groups_name=None,
+        groups_names=None,
         tsne_params=None,
+        umap_params=None,
         marker_mode=1,
         **kwargs
         ):
@@ -257,6 +258,9 @@ class Batch:
             any valid argument to parametrize compute_fingerprints() method
 
         '''
+
+        if cells_ids == None: cells_ids = list(self.cells.keys())
+        if groups_names == None: groups_names = list(self.recs_groups.keys())
 
         fp = self.compute_fingerprints(
                     cells_ids = cells_ids,
@@ -298,10 +302,10 @@ class Batch:
                 
             umap = UMAP(**umap_params)
             transformed = umap.fit_transform(fp)
-
+            xlabel = "UMAP 1"
+            ylabel = "UMAP 2"
 
         # clusterize
-        # labels = GMM(transformed,n_components=n_components,covariance_type='diag')
         if k == None:
             k = find_optimal_kmeans_k(transformed)
 
@@ -315,8 +319,7 @@ class Batch:
 
         else:
             markers=None
-
-        plot_clusters(transformed,labels,markers,xlabel,ylabel,groups_name=groups_name,save=save_name)
+        plot_clusters(transformed,labels,markers,xlabel,ylabel,groups_names=groups_names,save=save_name)
 
         # get popos
         pops = []

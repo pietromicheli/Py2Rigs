@@ -79,7 +79,7 @@ class Rec:
         if self.params["binsize"] > 0:
 
             self._bin_data_(self.params["sf"]*self.params["binsize"])
-            
+
             # if spikes, compute firing rate
             if self.loader.dtype == 'spikes':
                 self.dataRaw /= self.params["binsize"]
@@ -175,6 +175,8 @@ class Rec:
             the fingerptint.
             Should contain key-values pairs such as {stim:[t1,...,tn]}, where stim is a valid
             stim name and [t1,...,tn] is a list of valid trials for that stim.
+        - rtype: str
+            whether to use normalized or raw responses. Can be either 'norm' or 'raw'
 
         """
 
