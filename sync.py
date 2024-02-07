@@ -170,9 +170,9 @@ class Sync:
                     self.sync_tps.extend(trial)
 
         return self
+    
 
-
-    def generate_data_structure_sn(
+    def generate_data_structure_RF(
         self,
         sync_file: str,
         texture_file: str,
@@ -180,7 +180,7 @@ class Sync:
         ):
 
         """
-        Crete a sync data structure specifically for Sparse Noise recordings.
+        Crete a sync data structure specifically for rf mapping using one white square over black screen.
         It requires the scanbox metadata .mat file and the sparse noise texture .mat file
         
         - sync_file:
@@ -195,38 +195,29 @@ class Sync:
         """     
 
         self.sync_tps = np.squeeze(io.loadmat(sync_file)["info"][0][0][0])
-        self.textures = io.loadmat(texture_file)['stimulus_texture']
+        self.textures = np.load(texture_file)
         self.text_dim = self.textures.shape
         self.trial_len = trial_len
-        self.trials_names = []
+        self.trials_names = {}
         self.stims_names.append("sparse_noise")
         self.sync_ds = {'sparse_noise':{}}
 
+        c = 0
         for i in range(self.text_dim[1]):
             for j in range(self.text_dim[2]):
+                c+=1
 
                 on_indexes = np.where(self.textures[:,i,j]==1)[0]
-                off_indexes = np.where(self.textures[:,i,j]==0)[0]
 
                 # extract sync tps where square turned white
                 on_tps = [(frame,frame+trial_len) for frame in self.sync_tps[on_indexes]]
-                # extract sync tps where square turned black
-                off_tps = [(frame,frame+trial_len) for frame in self.sync_tps[off_indexes]]
 
                 # on trial
-                self.trials_names.append('%d_%d_on'%(i,j))
+                self.trials_names |= {c:'%d_%d_on'%(i,j)}
                 self.sync_ds['sparse_noise']|=({'%d_%d_on'%(i,j): 
                                                 {'trials': on_tps,
                                                 'trial_len': trial_len,
                                                 'pause_len': 0}})
-                # off trial 
-                self.trials_names.append('%d_%d_off'%(i,j))
-                self.sync_ds['sparse_noise']|=({'%d_%d_off'%(i,j): 
-                                                {'trials': off_tps,
-                                                'trial_len': trial_len,
-                                                'pause_len': 0}})
-
-
 
 
         self.sync_ds['sparse_noise']|={'stim_window':(self.sync_tps[0],self.sync_tps[-1])}

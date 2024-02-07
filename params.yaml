@@ -6,8 +6,9 @@
   #no binning will be done
   binsize : 0
 
-  # maximum time in seconds after trial 
-  # to keep.
+  # time in seconds after trial 
+  # to keep. if <0, it will be 
+  # automatically calculated
   max_aftertrial: 3
   
   # number time in seconds to use for 

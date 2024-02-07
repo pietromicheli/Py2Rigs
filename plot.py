@@ -22,12 +22,66 @@ warnings.simplefilter('always')
 #   }  # [IPSI, CONTRA, BOTH, ...]
 
 
-cmap = cm.get_cmap('rainbow')
-rng = np.random.default_rng(seed=999)
-index = rng.random(100)
-TRIALS_C = [cmap(i) for i in index]
+# cmap = cm.get_cmap('gist_rainbow')
+# rng = np.random.default_rng(seed=2)
+# index = rng.random(100)
+# TRIALS_C = [cmap(i) for i in index]
 
-        # POPS_C = list(colors.TABLEAU_COLORS.keys())
+TRIALS_C = [
+
+    (0.576, 0.439, 0.859, 1),     # Medium Purple
+    (1, 0.549, 0, 1),              # Dark Orange
+    (0, 0.502, 0.502, 1),          # Teal
+    (1, 0.078, 0.576, 1),          # Deep Pink
+    (0, 1, 0.271, 1),              # Neon Green
+    (1, 0, 0.502, 1),              # Raspberry
+    (0.4, 0.804, 0.667, 1),        # Medium Aquamarine
+    (1, 0.647, 0, 1),              # Orange
+    (0, 0.502, 1, 1),              # Royal Blue
+    (1, 0.412, 0.706, 1),          # Hot Pink
+    (0.251, 0.878, 0.816, 1),      # Turquoise
+    (1, 0.843, 0, 1),              # Gold
+    (0.729, 0.333, 0.827, 1),      # Medium Orchid
+    (0, 1, 1, 1),                  # Cyan
+    (1, 0.271, 0, 1),              # Red-Orange
+    (0.627, 0.125, 0.941, 1),      # Purple
+    (0, 1, 0.498, 1),              # Spring Green
+    (0.855, 0.667, 0.125, 1),      # Goldenrod
+    (0.678, 0.847, 0.902, 1),      # Light Blue
+    (1, 0.388, 0.278, 1),          # Tomato
+    (0.294, 0, 0.51, 1),           # Indigo
+    (0.678, 1, 0.184, 1),          # Green Yellow
+    (1, 0.078, 0.576, 1),          # Deep Pink
+    (0, 0.98, 0.604, 1),           # Medium Spring Green
+    (1, 0.412, 0.706, 1),          # Hot Pink
+    (1, 0.843, 0, 1),              # Gold
+    (0, 0.98, 0.604, 1),           # Medium Spring Green
+    (0.275, 0.51, 0.706, 1),       # Steel Blue
+    (0.941, 0.902, 0.549, 1),      # Khaki
+    (1, 0.412, 0.706, 1),          # Hot Pink
+    (0.125, 0.698, 0.667, 1),      # Light Sea Green
+    (1, 0.843, 0, 1),              # Gold
+    (0.941, 0.502, 0.502, 1),      # Light Coral
+    (0, 0.502, 0.502, 1),          # Teal
+    (0.678, 1, 0.184, 1),          # Green Yellow
+    (1, 0, 1, 1),                  # Magenta
+    (0, 1, 1, 1),                  # Cyan
+    (1, 0.271, 0, 1),              # Red-Orange
+    (0.502, 0.502, 0, 1),          # Olive
+    (0.294, 0, 0.51, 1),           # Indigo
+    (0.729, 0.333, 0.827, 1),      # Medium Orchid
+    (0.678, 1, 0.184, 1),          # Green Yellow
+    (1, 0, 0.502, 1),              # Raspberry
+    (1, 0.647, 0, 1),              # Orange
+    (0.855, 0.667, 0.125, 1),      # Goldenrod
+    (0, 0.98, 0.604, 1),           # Medium Spring Green
+    (1, 0.271, 0, 1),              # Red-Orange
+    (0.275, 0.51, 0.706, 1),       # Steel Blue
+    (0.941, 0.902, 0.549, 1)       # Khaki
+            ]
+
+
+# POPS_C = list(colors.TABLEAU_COLORS.keys())
 POPS_C  = [np.array(c) for c in sns.color_palette('pastel')]
 
 ### DRAWING FUNCTIONS ###
@@ -40,6 +94,7 @@ def draw_singleStim(
     rtype="norm",
     ylabel="",
     stim_window = True,
+    color=None,
     legend = False,
     func_ = None
 ):
@@ -94,7 +149,7 @@ def draw_singleStim(
                 cells_avgs = func_[0](cells_avgs,**func_[1])
 
             resp_dict[trial] |= {"mean":np.mean(cells_avgs,axis=0), 
-                                 "sem":np.std(cells_avgs,axis=0)/np.sqrt(len(cells_avgs))}
+                                "sem":np.std(cells_avgs,axis=0)/np.sqrt(len(cells_avgs))}
     else:
 
         cell = cells
@@ -108,7 +163,7 @@ def draw_singleStim(
     # draw the traces
     title = stim+" -"
     for trial in trials:
-
+        
         if isinstance(cells, list):
 
             r = resp_dict[trial]["mean"]
@@ -116,8 +171,10 @@ def draw_singleStim(
 
         else: 
 
-            r = cell.analyzed_trials[stim][trial]["%s_avg"%rtype]
-            error = cell.analyzed_trials[stim][trial]["%s_std"%rtype]
+            if cells != None:
+            
+                r = cell.analyzed_trials[stim][trial]["%s_avg"%rtype]
+                error = cell.analyzed_trials[stim][trial]["%s_std"%rtype]
 
             if func_ != None:
 
@@ -145,24 +202,27 @@ def draw_singleStim(
 
         if stim_window:
 
-            ax.axvspan(on_frame, off_frame, color="k", alpha=0.7)
+            ax.axvspan(on_frame, off_frame, color="k", alpha=0.2)
             # only draw stim window for first trial
             stim_window = False
 
             ax.set_xticks(
-                [0, on_frame, on_frame+1, off_frame, int(len(r) / sf)]
+                [0, on_frame, on_frame+1, off_frame, round(len(r) / sf)]
             )
 
             ax.set_xticklabels(
                 [round(-on_frame,1), 0, 1, round(off_frame-on_frame,1), round(len(r) / sf,1)]
             )
 
-        ax.plot(x, r, c=TRIALS_C[inverted_trials_dict[trial]], linewidth=0.8, alpha=0.6, label=trial)
+        if color == None:
+            color_ = TRIALS_C[inverted_trials_dict[trial]]
+
+        ax.plot(x, r, c=color_, linewidth=1.4, alpha=0.6, label=trial)
 
         if isinstance(error,np.ndarray):
 
             ax.fill_between(
-                x, r + error, r - error, color=np.array(TRIALS_C[inverted_trials_dict[trial]])*0.5, alpha=0.3
+                x, r + error, r - error, color=np.array(color_)*0.5, alpha=0.3
             )
 
         title += " %s"%trial
@@ -196,6 +256,126 @@ def draw_singleStim(
 
     return ax, ymax, ymin
 
+def draw_singleStim_dataSupp(
+    ax,
+    dataSupp,
+    stim,
+    trials,
+    sf=15.5,
+    rtype="norm",
+    ylabel="",
+    stim_window = True,
+    color=None,
+    legend = False,
+    func_ = None
+):
+    
+    """
+    Plot average response calculated across all the specified cells .
+
+    - dataSupp: dict
+        dataSupp dict from a rec obj. 
+    - sync: Sync
+        Sync object associated to the cells
+    - stim:
+        stimulation condition for which to plot the average
+    - trials:
+        trials to plot, can be str or list of str. If None, use all the possible trials 
+    -rtype: str
+        can be "norm", "raw"
+    - func: dict
+        function that will be applied to each signal. first argoument of the function is 
+        is assumed to be the signal. Should be in the form:
+        (func,**kwards) where kwards should not contain first argoument (signal)
+    """
+        
+    if isinstance(trials, str):
+
+        trials = [trials]
+
+    ymax = 0
+    ymin = 0
+
+    name = list(dataSupp.keys())[0]
+    dataSupp = dataSupp[name]
+
+    # draw the traces
+    title = stim+" -"
+    for i,trial in enumerate(trials):
+            
+        r = dataSupp[stim][trial]["%s_avg"%rtype]
+        error = dataSupp[stim][trial]["%s_std"%rtype]
+
+        if func_ != None:
+
+            r = func_[0](r,**func_[1])
+            error = func_[0](error,**func_[1])
+
+        if (r + error).max() > ymax:
+
+            ymax = (r + error).max()
+
+        if (r - error).min() < ymin:
+
+            ymin = (r - error).min() 
+        
+        x = np.arange(len(r)) / sf
+
+        on_frame = (
+            dataSupp[stim][trial]["window"][0] / sf
+        )
+        off_frame = (
+            dataSupp[stim][trial]["window"][1] / sf
+        )
+
+        if stim_window:
+
+            ax.axvspan(on_frame, off_frame, color="k", alpha=0.2)
+            # only draw stim window for first trial
+            stim_window = False
+
+            ax.set_xticks(
+                [0, on_frame, on_frame+1, off_frame, round(len(r) / sf)]
+            )
+
+            ax.set_xticklabels(
+                [round(-on_frame,1), 0, 1, round(off_frame-on_frame,1), round(len(r) / sf,1)]
+            )
+
+        if color == None:
+            color_ = TRIALS_C[i]
+
+        ax.plot(x, r, c=color_, linewidth=1.4, alpha=0.6, label=trial)
+
+        if isinstance(error,np.ndarray):
+
+            ax.fill_between(
+                x, r + error, r - error, color=np.array(color_)*0.5, alpha=0.3
+            )
+
+        title += " %s"%trial
+
+        if ylabel==None:
+        
+            if rtype == "norm":
+
+                ax.set_ylabel("%s -norm"%name,fontsize=18)
+
+        ax.set_ylabel(ylabel,fontsize=18)
+
+        ax.set_xlabel("time [s]",fontsize=18)
+
+        if legend:
+
+            ax.legend()
+
+        # ax.set_title(title,fontsize=18)
+
+    ax.spines[['right','top','left','bottom']].set_visible(False)
+    ax.grid('dashed',linewidth = 1.5, alpha = 0.25)
+
+    return ax, ymax, ymin
+        
 def draw_full(
     ax,
     cells,
@@ -353,8 +533,8 @@ def draw_events_full(
 
 def draw_heatmap(
         matrix, 
-        vmin, 
-        vmax,
+        vmin=None, 
+        vmax=None,
         cbar=False,
         cb_label="", 
         ax=None):
@@ -370,7 +550,8 @@ def draw_heatmap(
 
     ax = sns.heatmap(
         m,
-        vmin,vmax,
+        vmin=vmin,
+        vmax=vmax,
         xticklabels=False,
         yticklabels=False,
         ax=ax,
@@ -394,6 +575,7 @@ def plot_multipleStim(
     rtype="norm",
     func_=None,
     full="norm",
+    dataSupp=None,
     stim_window=True,
     ylabel='',
     qi_threshold=0,
@@ -430,6 +612,9 @@ def plot_multipleStim(
         WARNING: 
         Don't plot averaged full traces of populations of cells from different recordings,
         as the stimulation pattern is likely to be different for each recording!
+    - dataSupp: str
+        name of a valid supplementary data (e.g. pupillometry, tredmill ecc..) present in the
+        recording
     - order_stims: bool
         wether to order the stimuli subplots or not. the ordering is based on the name.
     - func_: tuple
@@ -470,13 +655,17 @@ def plot_multipleStim(
         cells = [cells]
 
     ## if full is specidied, and average==False, add a row to the figure
-    add_row = 0
     add_full = 0
     add_stim = 0
+    add_supp = 0
 
     if full != None:
 
         add_full = 1
+
+    if dtaSupp != None:
+        
+        add_supp = 1
 
     for stim in stims:
 
@@ -488,13 +677,13 @@ def plot_multipleStim(
     if add_stim == 0:
         plot_stim = False
 
-    add_row = add_full+add_stim
+    add_row = add_full+add_stim+add_supp
 
     # main loop
     for c in cells:
 
         if group_trials:
-            figsize = (9*n_stims, 3*(2+add_row))
+            figsize = (10*n_stims, 4*(2+add_row))
             nrows = (1+add_row)
         else:
             figsize = (9*n_stims, 8*n_trials+add_row)
@@ -549,7 +738,8 @@ def plot_multipleStim(
             # y_min = 0
 
             trials_ = sorted(stim_dict[stim])
-
+            
+            # PLOT GRUPPED TRIALS
             if group_trials:
 
                 ## make sure to use only trials which exist for a specific stim
@@ -594,7 +784,8 @@ def plot_multipleStim(
                     axs_.set_xlabel("")
 
             else:
-                
+
+                # PLOT UNGRUPPED TRIALS
                 axs_T = axs.T
 
                 if len(stims)>1:
@@ -611,7 +802,7 @@ def plot_multipleStim(
 
                     ## make sure to use only trials which exist for a specific stim
                     if trial in sync.sync_ds[stim]:
-
+                        
                         _, ymax, ymin = draw_singleStim(axs_T[i], c, stim, trial,rtype, ylabel=ylabel+' [%s]'%rtype,
                                                         stim_window=stim_window, func_=func_, legend=legend)
 
@@ -627,6 +818,19 @@ def plot_multipleStim(
                         axs_T[i].set_title("")
 
                         if i>0: axs_T[i].set_title("")
+                
+            # plot dataSupp if desired
+            if dataSupp != None:
+                
+                if axs.ndim==1:
+
+                    ax_supp = axs[-2]
+
+                else:
+
+                    ax_supp = axs[-2,j]
+
+                
 
             if full != None:
                 
@@ -696,9 +900,9 @@ def plot_multipleStim(
         
         if full != None: axs = axs[:-1]
 
-        # for ax in axs.flatten():
+        for ax in axs.flatten():
 
-        #     ax.set_ylim(y_min-(abs(y_min/10)), y_max+(abs(y_max/10)))
+            ax.set_ylim(y_min-(abs(y_min/10)), y_max+(abs(y_max/10)))
 
         if share_y:
 
@@ -1096,13 +1300,15 @@ def plot_clusters(
 
         plt.savefig(save, bbox_extra_artists=legends, bbox_inches='tight')
 
-def plot_sparse_noise(
+def plot_receptive_fields(
         cells,
         texture_dim:tuple,
         pre_trial:int,
-        freq=4,
+        avg=True,
+        dataSupp=None,
+        freq=0.5,
         sr = 15.5,
-        save_path=''
+        save_path=None
 ):
 
     """
@@ -1114,61 +1320,114 @@ def plot_sparse_noise(
         tuple specifying the dimension of the texture matrix used for sparse noise stim
     - pre_trials: int
         number of frames before the trial onset included when extracting each trial response
+    - dataSupp: dict
+        a pair of {key:value} from a dataSupp_analyzed attribute of a rec obj
     - freq: int
         frequency of the sparse noise stim
     - sr: int
         sample rate of the recording
     - save_path: str
-        path ehre to save the plot
+        path wehre to save the plots
     """
 
-    for cell in cells:
+    if not avg:
 
-        fig, axs = plt.subplots(texture_dim[0],texture_dim[1],sharex=False,sharey=False)
+        for cell in cells:
 
-        if 'sparse_noise' not in cell.analyzed_trials:
+            fig, axs = plt.subplots(texture_dim[0],texture_dim[1],sharex=False,sharey=False)
 
-            warnings.warn("No Sparse Noise stim found for cell %s !"%cell.id, RuntimeWarning)
-            continue
+            if 'sparse_noise' not in cell.analyzed_trials:
 
-        ymax = 0
-        ymin = 0
-        for trial in cell.analyzed_trials['sparse_noise']:
+                warnings.warn("No Sparse Noise stim found for cell %s !"%cell.id, RuntimeWarning)
+                continue
+
+            ymax = 0
+            ymin = 0
+            for trial in cell.analyzed_trials['sparse_noise']:
+
+                row = int(trial.split(sep='_')[0])
+                col = int(trial.split(sep='_')[1])
+        
+                draw_singleStim(axs[row,col], cells, 'sparse_noise', trial, stim_window=False)
+                axs[row,col].set_xlabel('')
+                axs[row,col].set_ylabel('')
+                axs[row,col].tick_params(axis=u'both', which=u'both',length=0)
+
+                axs[row,col].set_xticks([0,1,2])
+                axs[row,col].set_xticks([0,1,2])
+
+            # plt.setp(axs, ylim=(ymin+(ymin/5),ymax+(ymax/5)))
+            plt.subplots_adjust(wspace=0.04)
+            plt.subplots_adjust(hspace=0.04)
+
+            if save_path != None:
+                plt.savefig(r'%s/%s.png'%(save_path,cell.id))
+
+            plt.close(fig)
+
+    else:
+
+        fig, axs = plt.subplots(texture_dim[0],texture_dim[1],figsize=(texture_dim[1]*2,texture_dim[0]*2),sharex=True,sharey=True)
+
+        fig.suptitle('mean activity - %d ROIs'%len(cells), fontsize=15)
+
+        responses = np.zeros((texture_dim[0],texture_dim[1],len(cells)))
+        trials = cells[0].analyzed_trials['sparse_noise']
+
+
+        for trial in trials:
 
             row = int(trial.split(sep='_')[0])
             col = int(trial.split(sep='_')[1])
-            rtype = trial.split(sep='_')[2]
+    
+            draw_singleStim(axs[row,col], cells, 'sparse_noise', trial, stim_window=False)
+            axs[row,col].set_xlabel('')
+            axs[row,col].set_ylabel('')
+            axs[row,col].tick_params(axis=u'both', which=u'both',length=0)
 
-            r = cell.analyzed_trials['sparse_noise'][trial]['avg_norm']
-            std = cell.analyzed_trials['sparse_noise'][trial]['std_norm']
-            x = np.arange(len(r))
+            # axs[row,col].set_xticks([0,1,2])
+            # axs[row,col].set_xticks([0,1,2])
+        
+            plt.subplots_adjust(wspace=0.04)
+            plt.subplots_adjust(hspace=0.04)
+        
+        if save_path != None:
+            plt.savefig(r'%s.png'%(save_path))
 
-            if rtype=='on':
-                c = 'r'
-            elif rtype=='off':
-                c = 'k'
+        # plot also dataSupp if desired
+        if dataSupp != None:
 
-            axs[row,col].plot(r,linewidth=0.7,alpha=0.7,c=c,label=str(cell.analyzed_trials['sparse_noise'][trial]["QI"]<0.05))
-            axs[row,col].fill_between(x,r+std,r-std,alpha=0.1,color=c)
-            axs[row,col].axvspan(pre_trial,(pre_trial+int(sr/freq)),alpha=0.1,color='y')
-            axs[row,col].legend(fontsize=9)
-            if (row+col)==0:
-                axs[row,col].tick_params(top=True, labeltop=True, bottom=False, labelbottom=False)
+            for name,data in dataSupp.items():
+                
+                fig, axs = plt.subplots(texture_dim[0],texture_dim[1],figsize=(texture_dim[1]*2,texture_dim[0]*2),sharex=True,sharey=True)
 
-            else:
-                axs[row,col].set_xticks([])
-                axs[row,col].set_yticks([])
+                fig.suptitle('%s - mean'%name, fontsize=15)
 
-            if (r+std).max()>ymax: ymax = (r+std).max()
-            if (r-std).min()<ymin: ymin = (r-std).min()
+                responses = np.zeros((texture_dim[0],texture_dim[1],len(cells)))
+                trials = data['sparse_noise']
 
+                for trial in trials:
 
-        plt.setp(axs, ylim=(ymin+(ymin/5),ymax+(ymax/5)))
-        plt.subplots_adjust(wspace=0.04)
-        plt.subplots_adjust(hspace=0.04)
+                    row = int(trial.split(sep='_')[0])
+                    col = int(trial.split(sep='_')[1])
+            
+                    draw_singleStim_dataSupp(axs[row,col], {name:data}, 'sparse_noise', trial, stim_window=False)
+                    axs[row,col].set_xlabel('')
+                    axs[row,col].set_ylabel('')
+                    axs[row,col].tick_params(axis=u'both', which=u'both',length=0)
 
-        plt.savefig(r'%s/%s.png'%(save_path,cell.id))
-        plt.close(fig)
+                    # axs[row,col].set_xticks([0,1,2])
+                    # axs[row,col].set_xticks([0,1,2])
+                
+                    plt.subplots_adjust(wspace=0.04)
+                    plt.subplots_adjust(hspace=0.04)
+                
+                if save_path != None:
+                        plt.savefig('%s_%s.png'%(save_path,name))
+
+                # plt.close(fig)
+
+                     
 
 def plot_histogram(
     values:dict, 
@@ -1236,119 +1495,3 @@ def plot_histogram(
     plt.savefig(save_name, bbox_inches='tight')
     plt.show()
     plt.close(fig)
-
-
-# def plot_clusters(
-#     data,
-#     labels,
-#     markers=None,
-#     xlabel='',
-#     ylabel='',
-#     l1loc='upper right',
-#     l2loc='upper left',
-#     groups_name='Group',
-#     save=None
-
-# ):
-    
-#     """
-#     Plot scatterplot of data. 
-#     Each datapoint will be color coded according to label array, and the marker will be
-#     assign accoding to the marker_criteria.
-
-#     - data: Array-like
-#         datapoints to be plotted. Only first 2 dimensions will be plotted
-#     - labels: Array-like
-#         labels array specifying the clusters
-#     - markers: Array-like
-#         markers array specifying same values for datapoints you want to draw using the
-#         same marker.
-#     - groups_name: str
-#     label prefix for the groups specifyed by the markers. only used if markers is passed
-#     - algo: str
-#         name of the embedding algorithm
-#     """
-
-#     clist = np.array(POPS_C)
-#     allmarkers = list(Line2D.markers.items())[2:] 
-#     # random.shuffle(allmarkers)
-#     # random.shuffle(clist)
-
-#     singlemarker = False
-
-#     if markers==None:
-
-#         markers = np.zeros(len(data),int).tolist()
-#         singlemarker = True
-
-#     Xax = data[:, 0]
-#     Yax = data[:, 1]
-
-#     fig = plt.figure(figsize=(7, 5))
-#     ax = fig.add_subplot(111)
-
-#     fig.patch.set_facecolor("white")
-
-#     for m in np.unique(markers):
-
-#         marker = allmarkers[m][0]
-#         ix = np.where(markers==m)[0]
-
-#         s = ax.scatter(
-#             Xax[ix], Yax[ix], 
-#             # edgecolors=clist[labels[ix]],
-#             facecolors=clist[labels[ix]]*0.7,
-#             s=50, 
-#             marker=marker,
-#             alpha=0.2,
-#         )
-
-#     p = []
-#     l = []
-#     for i,ix in enumerate(np.unique(labels)):
-
-#         c = clist[ix]*0.7
-#         p.append(patches.Rectangle((0,0),1,1,fc=c))
-#         l.append("POP %d: %d ROIs"%(i,len(labels[labels==ix])))
-
-#     legend1 = ax.legend(p,
-#                         l,
-#                         # loc=l1loc,
-#                         bbox_to_anchor=(1.35, 1.0),
-#                         bbox_transform=plt.gca().transAxes
-#                         )
-#     ax.add_artist(legend1)
-    
-#     if not singlemarker:
-#         import matplotlib.lines as mlines
-
-#         handles = []
-#         for m in np.unique(markers):
-#             h = mlines.Line2D([], [], marker=m, linestyle='None',
-#                           markersize=10, label='%s %d'%(groups_name,i))
-#             handles.append(h)
-        
-#         legend2 = ax.legend([plt.plot([],[],marker=allmarkers[m][0],color='k', ls="none")[0] for m in np.unique(markers)],
-#                             ['%s %d'%(groups_name,i) for i in np.unique(markers)],
-#                             bbox_to_anchor=(1.35, 0),
-#                             bbox_transform=plt.gca().transAxes
-#                             )
-#         ax.add_artist(legend2)
-#         legends = (legend1,legend2)
-
-#     else: legends=(legend1)
-    
-
-#     ax.set_xlabel(xlabel, fontsize=18)
-#     ax.set_ylabel(ylabel, fontsize=18)
-#     ax.set_title("%d CELLs"%(len(Xax)))
-#     ax.spines['top'].set_visible(False)
-#     ax.spines['right'].set_visible(False)
-#     ax.spines['left'].set_visible(False)
-#     ax.spines['bottom'].set_visible(False)
-
-#     plt.grid('dashed',linewidth = 1.5, alpha = 0.25)
-
-#     if save!=None:
-
-#         plt.savefig(save, bbox_extra_artists=(legends,), bbox_inches='tight')
