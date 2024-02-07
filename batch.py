@@ -32,7 +32,7 @@ class Batch:
         for rec_id,ld in enumerate(loaders):
 
             print("\n> creating Rec obj with index: %d:"%rec_id)
-            rec = Rec(ld)
+            rec = Rec(ld,id=rec_id)
             self.recs |= {rec_id:rec}
             recs_list.append(rec)
             groups_list.append(rec.group)
@@ -101,7 +101,7 @@ class Batch:
 
         for rec in self.recs:
             
-            print("> Rec %d:"%rec)
+            print("\n> Rec %d:"%rec)
             self.recs[rec].load_params()
 
     def extract_all(self, keep_unresponsive=False):
@@ -109,7 +109,7 @@ class Batch:
         """
         Extract neural and supplementary data from all the recordings
         """
-
+ 
         cells = self._extract_data_(keep_unresponsive=keep_unresponsive)
         suppData = self._extract_dataSupp_()
 
@@ -260,7 +260,10 @@ class Batch:
         '''
 
         if cells_ids == None: cells_ids = list(self.cells.keys())
-        if groups_names == None: groups_names = list(self.recs_groups.keys())
+
+        if groups_names == None: 
+            if marker_mode == 0: groups_names = list(self.recs_groups.keys())
+            else: groups_names = list(self.recs.keys())
 
         fp = self.compute_fingerprints(
                     cells_ids = cells_ids,
@@ -319,6 +322,7 @@ class Batch:
 
         else:
             markers=None
+
         plot_clusters(transformed,labels,markers,xlabel,ylabel,groups_names=groups_names,save=save_name)
 
         # get popos
@@ -334,7 +338,7 @@ class Batch:
 
             pops.append(c)
 
-        self.populations.append(pops)
+        self.populations = pops
 
         # assign pop label at each cell
         for i,pop in enumerate(pops):
@@ -342,7 +346,7 @@ class Batch:
 
                 self.cells[id].label = i
 
-        return pops
+        return self.populations
 
     def _extract_data_(self, keep_unresponsive=False):
 
@@ -356,6 +360,8 @@ class Batch:
         self.cells = {}
         groups = []
         for (rec_id, rec) in self.recs.items():
+            
+            print('\nRec %d :'%rec_id)
 
             group_id = rec.group
             groups.append(group_id)
@@ -390,12 +396,8 @@ class Batch:
         """
 
         self.dataSupp_analyzed = {ds:{} for ds in self.dataSupp_intersection}
-        groups = []
-
+            
         for (rec_id, rec) in self.recs.items():
-
-            group_id = rec.group
-            groups.append(group_id)
 
             # retrive only shared dataSupp from each recording
             rec._extract_dataSupp_(dataSupp_names=self.dataSupp_intersection)

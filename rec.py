@@ -22,7 +22,7 @@ class Rec:
     A recording master class
     """
 
-    def __init__(self, loader: Dataloader):
+    def __init__(self, loader: Dataloader, id=0):
 
         """
         Create a Rec object using the data found in the Dataloader input object
@@ -32,7 +32,7 @@ class Rec:
         if not isinstance(loader.dataRaw, np.ndarray) and not loader.dataSupp:
             raise Exception("ERROR: no Data found in the Loader!")            
 
-        self.id = 0
+        self.id = id
         self.loader = loader
         self.dataRaw = loader.dataRaw
         self.dataSupp = loader.dataSupp
@@ -195,7 +195,7 @@ class Rec:
 
         fingerprints = []
 
-        for cell in cells_ids:
+        for cell in tqdm(cells_ids):
 
             average_resp = self.cells[cell].analyzed_trials
 
@@ -438,18 +438,21 @@ class Rec:
                                                 int(self.params["baseline_length"]*self.sf) : 
                                                 self.sync.sync_ds[stim]["stim_window"][0]])
 
-                for trial_type in list(self.sync.sync_ds[stim].keys())[:-1]:  # last item is stim_window
+                pbar = tqdm(list(self.sync.sync_ds[stim].keys())[:-1]) # last item is stim_window
+                for trial_type in pbar:  
 
-                    print('    > Extracting trial: %s'%trial_type)
-
+                    pbar.set_description('    extracting trial: %s'%trial_type)
                     trials_raw = []
                     trials_norm = []
 
                     trial_len = self.sync.sync_ds[stim][trial_type]["trial_len"]
                     pause_len = self.sync.sync_ds[stim][trial_type]["pause_len"]
 
+                    # if pause_len > self.params["max_aftertrial"]*self.sf:
 
-                    if pause_len > self.params["max_aftertrial"]*self.sf:
+                    #     pause_len = int(self.params["max_aftertrial"]*self.sf)
+
+                    if self.params["max_aftertrial"]*self.sf>=0:
 
                         pause_len = int(self.params["max_aftertrial"]*self.sf)
 
@@ -481,6 +484,7 @@ class Rec:
                         trials_raw_avg = np.mean(trials_raw, axis=0)
                         trials_raw_std = np.std(trials_raw, axis=0)
                         trials_norm_avg = np.mean(trials_norm, axis=0)
+                        trials_norm_med = np.median(trials_norm, axis=0)
                         trials_norm_std = np.std(trials_norm, axis=0)
 
                     else:
@@ -488,6 +492,7 @@ class Rec:
                         trials_raw_avg = trials_raw[0]
                         trials_raw_std = 0
                         trials_norm_avg = trials_norm[0]
+                        trials_norm_med = trials_norm[0]
                         trials_norm_std = 0
 
                     on = int(self.params["pre_trial"]*self.sf)
@@ -502,6 +507,7 @@ class Rec:
                                 "trials_raw": trials_raw,
                                 "trials_norm": trials_norm,
                                 "norm_avg": trials_norm_avg,
+                                "norm_med": trials_norm_med,
                                 "norm_std": trials_norm_std,
                                 "window": (on, off),
                             }
@@ -572,7 +578,11 @@ class Rec:
                     pause_len = self.sync.sync_ds[stim][trial_type]["pause_len"]
 
 
-                    if pause_len > self.params["max_aftertrial"]*self.sf:
+                    # if pause_len > self.params["max_aftertrial"]*self.sf:
+
+                    #     pause_len = int(self.params["max_aftertrial"]*self.sf)
+
+                    if self.params["max_aftertrial"]*self.sf>=0:
 
                         pause_len = int(self.params["max_aftertrial"]*self.sf)
 
