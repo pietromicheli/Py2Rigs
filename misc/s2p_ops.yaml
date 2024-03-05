@@ -1,0 +1,14 @@
+# parameters for running suite2p
+
+input_format: "tif"
+nchannels: 1
+tau: 2. #gCaMP6s
+fs: 15.49
+reg_tif: 0
+do_registration: 1
+delete_bin: 0
+denoise: 0
+max_overlap: 0.5
+anatomical_only: 3
+diameter: 5
+delete_bin: 1

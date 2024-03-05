@@ -22,10 +22,12 @@ warnings.simplefilter('always')
 #   }  # [IPSI, CONTRA, BOTH, ...]
 
 
-# cmap = cm.get_cmap('gist_rainbow')
-# rng = np.random.default_rng(seed=2)
-# index = rng.random(100)
-# TRIALS_C = [cmap(i) for i in index]
+cmap = cm.get_cmap('gist_rainbow')
+rng = np.random.default_rng(seed=5)
+index = rng.integers(0,cmap.N,100)
+C_seq = [cmap(int(i)) for i in np.linspace(0,cmap.N,50)]
+C_rand = [cmap(int(i)) for i in index]
+
 
 TRIALS_C = [
 
@@ -79,10 +81,19 @@ TRIALS_C = [
     (0.275, 0.51, 0.706, 1),       # Steel Blue
     (0.941, 0.902, 0.549, 1)       # Khaki
             ]
-
-
 # POPS_C = list(colors.TABLEAU_COLORS.keys())
-POPS_C  = [np.array(c) for c in sns.color_palette('pastel')]
+POPS_C  = [c for c in sns.color_palette('pastel')]
+
+MARKERS = [
+            "o",
+            "v",
+            "s",
+            "P",
+            "d",
+            "1",
+            "*"
+        ]
+
 
 ### DRAWING FUNCTIONS ###
 
@@ -96,8 +107,7 @@ def draw_singleStim(
     stim_window = True,
     color=None,
     legend = False,
-    func_ = None
-):
+    func_ = None):
 
     """
     Plot average response calculated across all the specified cells .
@@ -117,7 +127,6 @@ def draw_singleStim(
         is assumed to be the signal. Should be in the form:
         (func,**kwards) where kwards should not contain first argoument (signal)
     """
-
 
     if isinstance(trials, str):
 
@@ -206,6 +215,7 @@ def draw_singleStim(
             # only draw stim window for first trial
             stim_window = False
 
+            ax.tick_params(labelsize=20)
             ax.set_xticks(
                 [0, on_frame, on_frame+1, off_frame, round(len(r) / sf)]
             )
@@ -215,14 +225,17 @@ def draw_singleStim(
             )
 
         if color == None:
-            color_ = TRIALS_C[inverted_trials_dict[trial]]
 
-        ax.plot(x, r, c=color_, linewidth=1.4, alpha=0.6, label=trial)
+            c = TRIALS_C[inverted_trials_dict[trial]]
+
+        else: c=color
+
+        ax.plot(x, r, c=c, linewidth=1.4, alpha=0.6, label=trial)
 
         if isinstance(error,np.ndarray):
 
             ax.fill_between(
-                x, r + error, r - error, color=np.array(color_)*0.5, alpha=0.3
+                x, r + error, r - error, color=np.array(c)*0.5, alpha=0.3
             )
 
         title += " %s"%trial
@@ -241,18 +254,18 @@ def draw_singleStim(
                 
                 ax.set_ylabel("OASIS spikes (z-score)",fontsize=18)
 
-        ax.set_ylabel(ylabel,fontsize=18)
+        ax.set_ylabel(ylabel,fontsize=25)
 
-        ax.set_xlabel("time [s]",fontsize=18)
+        ax.set_xlabel("time [s]",fontsize=25)
 
         if legend:
 
-            ax.legend()
+            ax.legend(fontsize="15")
 
         # ax.set_title(title,fontsize=18)
 
     ax.spines[['right','top','left','bottom']].set_visible(False)
-    ax.grid('dashed',linewidth = 1.5, alpha = 0.25)
+    # ax.grid('dashed',linewidth = 1.5, alpha = 0.25)
 
     return ax, ymax, ymin
 
@@ -261,14 +274,14 @@ def draw_singleStim_dataSupp(
     dataSupp,
     stim,
     trials,
+    trials_names_dict=None,
     sf=15.5,
     rtype="norm",
-    ylabel="",
+    ylabel=None,
     stim_window = True,
     color=None,
     legend = False,
-    func_ = None
-):
+    func_ = None):
     
     """
     Plot average response calculated across all the specified cells .
@@ -302,7 +315,7 @@ def draw_singleStim_dataSupp(
     # draw the traces
     title = stim+" -"
     for i,trial in enumerate(trials):
-            
+
         r = dataSupp[stim][trial]["%s_avg"%rtype]
         error = dataSupp[stim][trial]["%s_std"%rtype]
 
@@ -334,6 +347,7 @@ def draw_singleStim_dataSupp(
             # only draw stim window for first trial
             stim_window = False
 
+            ax.tick_params(labelsize=20)
             ax.set_xticks(
                 [0, on_frame, on_frame+1, off_frame, round(len(r) / sf)]
             )
@@ -342,15 +356,18 @@ def draw_singleStim_dataSupp(
                 [round(-on_frame,1), 0, 1, round(off_frame-on_frame,1), round(len(r) / sf,1)]
             )
 
-        if color == None:
-            color_ = TRIALS_C[i]
+        if trials_names_dict == None:
+            color = (0,0,0)
 
-        ax.plot(x, r, c=color_, linewidth=1.4, alpha=0.6, label=trial)
+        else:
+            color = TRIALS_C[trials_names_dict[trial]]
+
+        ax.plot(x, r, c=color, linewidth=2, alpha=0.6, label=trial)
 
         if isinstance(error,np.ndarray):
 
             ax.fill_between(
-                x, r + error, r - error, color=np.array(color_)*0.5, alpha=0.3
+                x, r + error, r - error, color=np.array(color)*0.8, alpha=0.3
             )
 
         title += " %s"%trial
@@ -359,11 +376,15 @@ def draw_singleStim_dataSupp(
         
             if rtype == "norm":
 
-                ax.set_ylabel("%s -norm"%name,fontsize=18)
+                ylabel = "%s [z-score]"%name
 
-        ax.set_ylabel(ylabel,fontsize=18)
+            elif rtype == "raw":
 
-        ax.set_xlabel("time [s]",fontsize=18)
+                ylabel = "%s"%name
+
+        ax.set_ylabel(ylabel,fontsize=25)
+
+        ax.set_xlabel("time [s]",fontsize=25)
 
         if legend:
 
@@ -372,7 +393,7 @@ def draw_singleStim_dataSupp(
         # ax.set_title(title,fontsize=18)
 
     ax.spines[['right','top','left','bottom']].set_visible(False)
-    ax.grid('dashed',linewidth = 1.5, alpha = 0.25)
+    # ax.grid('dashed',linewidth = 1.5, alpha = 0.25)
 
     return ax, ymax, ymin
         
@@ -455,7 +476,7 @@ def draw_full(
 
     if ylabel != None:
 
-        ax.set_ylabel(ylabel, fontsize=18)
+        ax.set_ylabel(ylabel, fontsize=25)
 
     for stim in stims:
 
@@ -467,7 +488,8 @@ def draw_full(
 
                 ax.axvspan(int((trial[0]-offset)/sf), int((trial[1]-offset)/sf),
                                 color=c, alpha=0.2, label="_"*i+"%s -%s"%(stim,trial_type))
-                
+
+    ax.tick_params(labelsize=20)            
     ax.spines[['top', 'right']].set_visible(False)         
     ymax = r.max()
     ymin = r.min()
@@ -527,7 +549,7 @@ def draw_events_full(
 
     if ylabel != None:
 
-        ax.set_ylabel(ylabel, fontsize=18)
+        ax.set_ylabel(ylabel, fontsize=25)
 
     return ax
 
@@ -545,7 +567,7 @@ def draw_heatmap(
 
     m = np.array(matrix)
 
-    map = sns.color_palette("icefire", as_cmap=True)
+    map = sns.diverging_palette(145, 300, s=60, as_cmap=True)
 
 
     ax = sns.heatmap(
@@ -578,7 +600,9 @@ def plot_multipleStim(
     dataSupp=None,
     stim_window=True,
     ylabel='',
+    ylim=None,
     qi_threshold=0,
+    nmax=10,
     plot_stim =True,
     order_stims=False,
     group_trials=True,
@@ -587,8 +611,7 @@ def plot_multipleStim(
     legend=False,
     save=False,
     save_path="",
-    save_suffix="",
-):
+    save_suffix="",):
 
     """
     Plot the responses for thwe specified cells. If average is True, plot the population average.
@@ -630,6 +653,7 @@ def plot_multipleStim(
         save_path = [save_path]
 
     stims = list(stim_dict.keys())
+    stims.sort()
     trials = list(set([t for stim in stim_dict for t in stim_dict[stim]]))
 
     if order_stims:
@@ -663,9 +687,9 @@ def plot_multipleStim(
 
         add_full = 1
 
-    if dtaSupp != None:
+    if dataSupp != None:
         
-        add_supp = 1
+        add_supp = len(dataSupp)
 
     for stim in stims:
 
@@ -680,10 +704,10 @@ def plot_multipleStim(
     add_row = add_full+add_stim+add_supp
 
     # main loop
-    for c in cells:
+    for i,c in enumerate(cells):
 
         if group_trials:
-            figsize = (10*n_stims, 4*(2+add_row))
+            figsize = (15*n_stims, 4*(2+add_row))
             nrows = (1+add_row)
         else:
             figsize = (9*n_stims, 8*n_trials+add_row)
@@ -707,6 +731,10 @@ def plot_multipleStim(
             spks = (c[0].rec.dtype=='spikes')
 
         else:
+
+            if i >= nmax: 
+                plt.close(fig)
+                break
 
             if c.qi != None:
                 qi = str(round(c.qi,2))
@@ -770,7 +798,7 @@ def plot_multipleStim(
 
                         axs_ = axs_[0]
 
-                _, ymax, ymin = draw_singleStim(axs_, c, stim, trials_,rtype, ylabel=ylabel, 
+                _, ymax, ymin = draw_singleStim(axs_, c, stim, trials_, rtype, ylabel=ylabel, 
                                                 stim_window=stim_window,func_=func_, legend=legend)
 
                 if ymax > y_max: y_max = ymax
@@ -779,7 +807,7 @@ def plot_multipleStim(
 
                 # if j>0: axs_.set_ylabel("")
 
-                if full:
+                if full or dataSupp:
 
                     axs_.set_xlabel("")
 
@@ -794,16 +822,12 @@ def plot_multipleStim(
 
                 trials_ = sorted(stim_dict[stim])
 
-                for i,trial in enumerate(trials_):
-
-                    if plot_stim:
-
-                        i +=1
+                for i,trial in enumerate(trials_, add_stim):
 
                     ## make sure to use only trials which exist for a specific stim
                     if trial in sync.sync_ds[stim]:
                         
-                        _, ymax, ymin = draw_singleStim(axs_T[i], c, stim, trial,rtype, ylabel=ylabel+' [%s]'%rtype,
+                        _, ymax, ymin = draw_singleStim(axs_T[i], c, stim, trial, rtype, ylabel=ylabel,
                                                         stim_window=stim_window, func_=func_, legend=legend)
 
                         if ymax > y_max: y_max = ymax
@@ -818,19 +842,38 @@ def plot_multipleStim(
                         axs_T[i].set_title("")
 
                         if i>0: axs_T[i].set_title("")
+
+                    if i < len(trials_) or add_full or dataSupp:
+                        axs_T[i].set_xlabel("")
                 
             # plot dataSupp if desired
             if dataSupp != None:
+
+                ndsupp = len(dataSupp)
+
+                for ix,(name,dsupp) in enumerate(dataSupp.items(),1):
                 
-                if axs.ndim==1:
+                    if axs.ndim==1:
+                        
+                        ax_supp = axs[(-ix-add_full)]
 
-                    ax_supp = axs[-2]
+                    else:
 
-                else:
+                        ax_supp = axs[(-ix-add_full),j]
 
-                    ax_supp = axs[-2,j]
+                    if not isinstance(c,list):
 
-                
+                        trials_names_dict = {v:k for k,v in c.sync.trials_names.items()}
+                    else: 
+                        trials_names_dict = {v:k for k,v in c[0].sync.trials_names.items()}
+
+                    draw_singleStim_dataSupp(ax_supp, {name:dsupp}, stim, stim_dict[stim], rtype='raw', trials_names_dict=trials_names_dict)
+
+                    if full:
+
+                        ax_supp.set_xlabel("")
+            
+                    # ax_supp.set_ylim(0.2,0.8)
 
             if full != None:
                 
@@ -843,7 +886,7 @@ def plot_multipleStim(
                     ax_full = axs[-1,j]
 
                 if full == 'norm' or full == 'raw': 
-                    ylabel_full = ylabel+' [%s]'%full
+                    ylabel_full = ylabel
 
                 if spks and isinstance(c, Cell):
 
@@ -888,21 +931,25 @@ def plot_multipleStim(
                     func(axs_T[0], pad_l=pad_l, stim_len=int(stim_len), fr=sf)
 
                     axs_T[0].spines[['right','top','left','bottom']].set_visible(False)
-                    axs_T[0].grid('dashed',linewidth = 1.5, alpha = 0.25)
+                    # axs_T[0].grid('dashed',linewidth = 1.5, alpha = 0.25)
                     axs_T[0].set_xticklabels([])
                     axs_T[0].set_yticklabels([])
 
                 else: axs_T[0].axis("off")
             
-                axs_T[0].set_title(stim, fontsize=15)  
-        
-        if plot_stim: axs= axs [1:]
-        
-        if full != None: axs = axs[:-1]
+                axs_T[0].set_title(stim, fontsize=22)  
+
+        axs = axs[add_stim:-(add_full+add_supp)]
 
         for ax in axs.flatten():
+            
+            if ylim != None:
 
-            ax.set_ylim(y_min-(abs(y_min/10)), y_max+(abs(y_max/10)))
+                ax.set_ylim(ylim[0],ylim[1])
+            
+            else:
+            
+                ax.set_ylim(y_min-(abs(y_min/10)), y_max+(abs(y_max/10)))
 
         if share_y:
 
@@ -927,7 +974,7 @@ def plot_multipleStim(
                 
                     plt.savefig(r"%s/ROI_#%s_%s%s.png" %(path,c.id,rtype,save_suffix),
                                 bbox_inches="tight")
-        # plt.close(fig)
+        plt.close(fig)
     
 def plot_FOV(
         rec,
@@ -973,7 +1020,7 @@ def plot_FOV(
 
             # for idx in pop:
 
-            # extract and color CELLs pixels
+            # extract and color ROIs pixels
 
             ypix = rec.stat[idx]['ypix']
 
@@ -1001,11 +1048,11 @@ def plot_heatmaps(
     vmin=None,
     vmax=None,
     normalize=None,
+    plot_stim=False,
     save=True,
     save_path="",
     name="",
-    cb_label="",
-):
+    cb_label="",):
 
     """
     Plot heatmap for all the cells.
@@ -1030,19 +1077,21 @@ def plot_heatmaps(
     if full == None:
 
         stims = list(stim_dict.keys())
+        stims.sort()
 
         all_trials = []
 
         for stim in stim_dict:
-            all_trials = all_trials+stim_dict[stim]
+            all_trials.extend(stim_dict[stim])
 
-        all_trials = set(sorted(all_trials))
+        all_trials = np.unique(all_trials)
+        
 
         add_row = 0
         for stim in stims:
 
             stim_func = "%s_stim"%(stim.split(sep='-')[0]) 
-            if stim_func in globals():
+            if plot_stim and (stim_func in globals()):
                 add_row=1
 
         nrows = len(all_trials)+add_row
@@ -1051,12 +1100,11 @@ def plot_heatmaps(
         if add_row:
             height_ratios[0] /= 2
                        
-        fig, axs = plt.subplots(nrows=nrows, ncols=len(stims),figsize=(25,20), 
+        fig, axs = plt.subplots(nrows=nrows, ncols=len(stims),figsize=(15*len(stims),6*nrows), 
                                 gridspec_kw={'height_ratios': height_ratios})
 
         cbar_ax = fig.add_axes([.3, .05, .4, .015])
         cbar = False
-
         for i,trial in enumerate(all_trials):
 
             i = i+add_row
@@ -1088,13 +1136,14 @@ def plot_heatmaps(
                     # convert to array
                     resp_all = np.array(resp_all)
 
+                    # normalize
                     if normalize == "linear":
 
                         resp_all = lin_norm(resp_all)
 
                     elif normalize == "zscore":
 
-                        resp_all = z_norm(resp_all, True)
+                        resp_all = z_norm(resp_all)
 
                     # sort matrix according to quality index
                     qis = [cell.qi for cell in cells]
@@ -1105,33 +1154,41 @@ def plot_heatmaps(
                     # if i==len(all_trials):
                     #     cbar=True
 
-                    draw_heatmap(resp_all,vmin=vmin,vmax=vmax,cb_label=cb_label,cbar=cbar,ax=ax)    
+                    draw_heatmap(resp_all,vmin=vmin,vmax=vmax,cb_label=cb_label,cbar=cbar,ax=ax)   
+                    ax.axvline(cell.analyzed_trials[stim][trial]['window'][0],0,color='r',linestyle='--',alpha=0.8) 
+                    ax.axvline(cell.analyzed_trials[stim][trial]['window'][1],0,color='r',linestyle='--',alpha=0.8) 
+
+                    if isinstance(axs[0],np.ndarray):
+                            ax_first = axs[0,j]
+                    else:
+                        ax_first = axs[0]
 
                     # try to plot stimuli
-                    stim_func = "%s_stim"%(stim.split(sep='-')[0]) 
-                    if stim_func in globals():
+                    if plot_stim:
+                        stim_func = "%s_stim"%(stim.split(sep='-')[0]) 
+                        if stim_func in globals():
 
-                        func = globals()[stim_func]
-                        
-                        ## retrive parameters 
-                        cell = cells[0]
-                        sf = cell.rec.sf
-                        pad_l = int(cell.params["pre_trial"]*cell.rec.sf)
+                            func = globals()[stim_func]
+                            
+                            ## retrive parameters 
+                            cell = cells[0]
+                            sf = cell.rec.sf
+                            pad_l = int(cell.params["pre_trial"]*cell.rec.sf)
 
-                        stim_len = len(resp_all[0])
+                            stim_len = len(resp_all[0])
 
-                        func(axs[0,j], pad_l=pad_l, stim_len=int(stim_len), fr=sf)
+                            func(ax_first, pad_l=pad_l, stim_len=int(stim_len), fr=sf)
 
-                        axs[0,j].set_xlim(0,len(resp_all[0]))
-                        axs[0,j].spines[['bottom', 'left', 'right', 'top']].set_visible(False)
-                        axs[0,j].grid('dashed',linewidth = 1.5, alpha = 0.25)
-                        axs[0,j].set_xticklabels([])
-                        axs[0,j].set_yticklabels([])
+                            ax_first.set_xlim(0,len(resp_all[0]))
+                            ax_first.spines[['bottom', 'left', 'right', 'top']].set_visible(False)
+                            ax_first.grid('dashed',linewidth = 1.5, alpha = 0.25)
+                            ax_first.set_xticklabels([])
+                            ax_first.set_yticklabels([])
 
-                    else:
-                        axs[0,j].axis("off")
+                        else:
+                            ax_first.axis("off")
                     
-                    axs[0,j].set_title(stim, fontsize=15)
+                    ax_first.set_title(stim, fontsize=15)
 
         cb = fig.colorbar(ax.collections[0], cax=cbar_ax, orientation='horizontal')
         cb.set_label(label=cb_label, size=18)
@@ -1140,10 +1197,13 @@ def plot_heatmaps(
         if len(all_trials)>1:
 
             for ax, trial in zip(axs[add_row:], all_trials):
-                ax[0].set_ylabel(trial,fontsize=18)
-
+                if len(stims)>1:
+                    ax[0].set_ylabel(trial,fontsize=25)
+                else:
+                    ax.set_ylabel(trial,fontsize=25)
+            
         else:
-            ax[1].set_ylabel(trial,fontsize=18)
+            ax[1].set_ylabel(trial,fontsize=25)
         
 
     # plot full traces
@@ -1174,12 +1234,11 @@ def plot_heatmaps(
         # plot
         draw_heatmap(resp_all,vmin=vmin,vmax=vmax,cb_label=cb_label,ax=ax)
 
-
     fig.suptitle("Population Average - %d ROIs"%len(cells), fontsize=18)
 
     if save: 
         plt.savefig(r"%s/%s.png"%(save_path,name), bbox_inches="tight")
-        # plt.close(fig)
+    plt.close(fig)
 
 def plot_clusters(
     data,
@@ -1190,9 +1249,7 @@ def plot_clusters(
     l1loc='upper right',
     l2loc='upper left',
     groups_names=None,
-    save=None
-
-):
+    save=None):
     
     """
     Plot scatterplot of data. 
@@ -1213,7 +1270,7 @@ def plot_clusters(
     """
 
     clist = np.array(POPS_C)
-    allmarkers = list(Line2D.markers.items())[2:] 
+    # allmarkers = list(Line2D.markers.items())[2:]
     # random.shuffle(allmarkers)
     # random.shuffle(clist)
 
@@ -1235,16 +1292,19 @@ def plot_clusters(
     scatters= []
     for m in np.unique(markers):
 
-        marker = str(allmarkers[m][0])
+        marker = str(MARKERS[m][0])
+        edgecolor = np.array(C_rand[m])*0.6
         ix = np.where(markers==m)[0]
 
         s = ax.scatter(
             Xax[ix], Yax[ix], 
             # edgecolors=clist[labels[ix]],
             facecolors=clist[labels[ix]]*0.7,
+            edgecolor='k',
+            linewidth=0.6,
             s=50, 
             marker=marker,
-            alpha=0.2,
+            alpha=0.3,
         )
 
         scatters.append(s)
@@ -1273,12 +1333,14 @@ def plot_clusters(
         handles = []
         for m,j in enumerate(np.unique(markers)):
 
-            marker = str(allmarkers[m][0])
+            marker = str(MARKERS[m][0])
             h = mlines.Line2D([], [], marker=marker, linestyle='None',
-                          markersize=10, label='%s'%(str(groups_names[j])))
+                            markersize=10, label='%s'%(str(groups_names[j])))
             handles.append(h)
         
-        legend2 = ax.legend([plt.plot([],[],marker=allmarkers[m][0],color='k', ls="none")[0] for m in np.unique(markers)],
+        legend2 = ax.legend([plt.plot([],[],marker=MARKERS[m][0],
+                            color='k',#C_rand[m]*0.6, 
+                            ls="none")[0] for m in np.unique(markers)],
                             ['%s'%(groups_names[i]) for i in np.unique(markers)],
                             bbox_to_anchor=(1.35, 0),
                             bbox_transform=plt.gca().transAxes
@@ -1286,15 +1348,18 @@ def plot_clusters(
         ax.add_artist(legend2)
         legends.append(legend2)
 
-    ax.set_xlabel(xlabel, fontsize=18)
-    ax.set_ylabel(ylabel, fontsize=18)
+    ax.set_xlabel(xlabel, fontsize=25)
+    ax.set_ylabel(ylabel, fontsize=25)
     ax.set_title("%d ROIs"%(len(Xax)))
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.spines['left'].set_visible(False)
     ax.spines['bottom'].set_visible(False)
+    ax.set_xticks
 
     plt.grid('dashed',linewidth = 1.5, alpha = 0.25)
+    plt.tick_params(left = False, right = False , labelleft = False , 
+                labelbottom = False, bottom = False) 
 
     if save!=None:
 
@@ -1305,11 +1370,13 @@ def plot_receptive_fields(
         texture_dim:tuple,
         pre_trial:int,
         avg=True,
+        heatmap=False,
+        rtype='norm',
         dataSupp=None,
+        color=(0,0,0),
         freq=0.5,
         sr = 15.5,
-        save_path=None
-):
+        save_path=None):
 
     """
     Plot sparse noise responses for each cell, overlying ON and OFF responses
@@ -1347,8 +1414,9 @@ def plot_receptive_fields(
 
                 row = int(trial.split(sep='_')[0])
                 col = int(trial.split(sep='_')[1])
-        
-                draw_singleStim(axs[row,col], cells, 'sparse_noise', trial, stim_window=False)
+
+                draw_singleStim(axs[row,col], cells, 'sparse_noise', trial, stim_window=False,color=color)
+                
                 axs[row,col].set_xlabel('')
                 axs[row,col].set_ylabel('')
                 axs[row,col].tick_params(axis=u'both', which=u'both',length=0)
@@ -1369,7 +1437,7 @@ def plot_receptive_fields(
 
         fig, axs = plt.subplots(texture_dim[0],texture_dim[1],figsize=(texture_dim[1]*2,texture_dim[0]*2),sharex=True,sharey=True)
 
-        fig.suptitle('mean activity - %d ROIs'%len(cells), fontsize=15)
+        fig.suptitle('population response [df/f] - %d ROIs'%len(cells), fontsize=15)
 
         responses = np.zeros((texture_dim[0],texture_dim[1],len(cells)))
         trials = cells[0].analyzed_trials['sparse_noise']
@@ -1379,20 +1447,48 @@ def plot_receptive_fields(
 
             row = int(trial.split(sep='_')[0])
             col = int(trial.split(sep='_')[1])
-    
-            draw_singleStim(axs[row,col], cells, 'sparse_noise', trial, stim_window=False)
+
+            if heatmap:
+                # extract data from each cell
+                resp_all = []
+                for cell in cells:
+
+                    r = cell.analyzed_trials['sparse_noise'][trial]["%s_avg"%rtype]
+                    resp_all.append(r)
+
+                resp_all = check_len_consistency(resp_all)
+                # convert to array
+                resp_all = np.array(resp_all)
+
+                # normalize
+                resp_all = z_norm(resp_all)
+
+                # sort matrix according to quality index
+                qis = [cell.qi for cell in cells]
+                qis_sort = np.argsort(qis)
+                resp_all = resp_all[np.flip(qis_sort)]
+
+                draw_heatmap(resp_all,cbar=False,ax=axs[row,col])   
+                axs[row,col].axvline(cell.analyzed_trials['sparse_noise'][trial]['window'][0],0,color='r',linestyle='--',alpha=0.8) 
+                axs[row,col].axvline(cell.analyzed_trials['sparse_noise'][trial]['window'][1],0,color='r',linestyle='--',alpha=0.8) 
+
+            else:
+                draw_singleStim(axs[row,col], cells, 'sparse_noise', trial, stim_window=False, color=color)
+           
             axs[row,col].set_xlabel('')
             axs[row,col].set_ylabel('')
             axs[row,col].tick_params(axis=u'both', which=u'both',length=0)
 
-            # axs[row,col].set_xticks([0,1,2])
-            # axs[row,col].set_xticks([0,1,2])
+            axs[row,col].set_xticks([0,1,2])
+            axs[row,col].set_xticks([0,1,2])
         
             plt.subplots_adjust(wspace=0.04)
             plt.subplots_adjust(hspace=0.04)
         
         if save_path != None:
             plt.savefig(r'%s.png'%(save_path))
+
+        plt.close(fig)
 
         # plot also dataSupp if desired
         if dataSupp != None:
@@ -1401,23 +1497,23 @@ def plot_receptive_fields(
                 
                 fig, axs = plt.subplots(texture_dim[0],texture_dim[1],figsize=(texture_dim[1]*2,texture_dim[0]*2),sharex=True,sharey=True)
 
-                fig.suptitle('%s - mean'%name, fontsize=15)
+                fig.suptitle('%s [zscore]'%name, fontsize=15)
 
                 responses = np.zeros((texture_dim[0],texture_dim[1],len(cells)))
                 trials = data['sparse_noise']
-
+                
                 for trial in trials:
 
                     row = int(trial.split(sep='_')[0])
                     col = int(trial.split(sep='_')[1])
             
-                    draw_singleStim_dataSupp(axs[row,col], {name:data}, 'sparse_noise', trial, stim_window=False)
+                    draw_singleStim_dataSupp(axs[row,col], {name:data}, 'sparse_noise', trial, rtype='raw', color=(0,0,0), stim_window=False)
                     axs[row,col].set_xlabel('')
                     axs[row,col].set_ylabel('')
                     axs[row,col].tick_params(axis=u'both', which=u'both',length=0)
 
-                    # axs[row,col].set_xticks([0,1,2])
-                    # axs[row,col].set_xticks([0,1,2])
+                    axs[row,col].set_xticks([0,1,2])
+                    axs[row,col].set_xticks([0,1,2])
                 
                     plt.subplots_adjust(wspace=0.04)
                     plt.subplots_adjust(hspace=0.04)
@@ -1425,16 +1521,16 @@ def plot_receptive_fields(
                 if save_path != None:
                         plt.savefig('%s_%s.png'%(save_path,name))
 
-                # plt.close(fig)
-
-                     
-
+                plt.close(fig)
+             
 def plot_histogram(
     values:dict, 
+    xlabel='',
     control_values=None,
-    bins=None,
+    binw=None,
+    kde=False,
     colors=sns.color_palette('pastel'),
-    save_name="hist.png"):
+    save=None):
 
     """
     Plot distribution of the data contained in values array.
@@ -1446,52 +1542,22 @@ def plot_histogram(
         dict containing stim:[rmis] items that will be used for plotting the control histograms.
 
     """
+    import pandas as pd
 
-    fig, axs = plt.subplots(figsize=(10,10),ncols=1)
+    df = pd.DataFrame(values)
 
-    if not isinstance(axs, np.ndarray):
+    sns.displot(data=df, binwidth=binw, palette=colors[:len(values)], edgecolor=None, stat='percent', rug=False, height=4, kde=kde, legend=True) 
 
-        axs = np.array([axs])
-
-    for i, stim in enumerate(values):
-
-        if bins == None:
-            q25, q75 = np.percentile(values[stim], [25, 75])
-            bin_width = 2 * (q75 - q25) * len(values[stim]) ** (-1/3)
-            bins = round((max(values[stim]) - min(values[stim])) / bin_width)
-
-        # axs[0].set_title(stim, fontsize=12)
-        norm_values = values[stim]/(values[stim].max())
-        # y, x , _ = axs[0].hist(norm_values,bins=bins,alpha=0.3,edgecolor='black',color=colors[i],
-        #                        label='condition %d'%i, density=True)
-        sns.distplot(values[stim], bins, True, color=colors[i].tolist(), label='condition %d'%i)   
-        
-        if control_values != None:
-
-            q25, q75 = np.percentile(control_values[stim], [25, 75])
-            bin_width = 2 * (q75 - q25) * len(control_values[stim]) ** (-1/3)
-            bins = round((max(control_values[stim]) - min(control_values[stim])) / bin_width)
-
-            axs[0].hist(control_values[stim],bins=bins,alpha=0.5,edgecolor='black',color='k')
-
-        # max_y = np.max(y)
-        # mean_y = np.median(y)
-        # max_y_i = np.argmax(y)
-        # mean_y_i = (np.abs(y - mean_y)).argmin()
-        # max_x = (x[max_y_i]+x[(max_y_i+1)])/2
-        # mean_x =(x[mean_y_i]+x[(mean_y_i+1)])/2
-
-    # axs[i].axvline(mean_x,0,(max_y+10),c='r',linewidth=1.7)
-    axs[0].axvline(0,0,1,c='k',linewidth=1,ls='-.')
+    plt.axvline(0,0,1,c='k',linewidth=1,ls='-.', alpha=0.3)
     
-    axs[0].set_xlim(-1,1)
-    axs[0].set_xlabel('RMI')
-    axs[0].set_ylabel('normalized counts')
+    plt.xlim(-1,1)
+    plt.xlabel(xlabel)
+    plt.gca().spines[['right','top','left','bottom']].set_visible(False)
+    plt.grid('dashed',linewidth = 1.5, alpha = 0.15)
 
-    axs[0].spines[['right','top','left','bottom']].set_visible(False)
-    plt.grid('dashed',linewidth = 1.5, alpha = 0.25)
-    plt.legend()
+    if save != None:
+        plt.savefig(save, bbox_inches='tight')
+        
+    # plt.show()
 
-    plt.savefig(save_name, bbox_inches='tight')
-    plt.show()
-    plt.close(fig)
+    return plt.gca()

@@ -82,21 +82,21 @@ def full_field_stim(
 
 
     pad_left = np.zeros(pad_l)+0.25 # 50% contrast
-    chunk_1 = np.ones(int(5*fr))*0.55
+    chunk_1 = np.ones(int(3*fr))*0.55
 
     stim_conc = np.concatenate([pad_left,chunk_1])
     pad_right = np.zeros((stim_len-len(stim_conc)))+0.25
 
     stim_conc = np.concatenate([stim_conc, pad_right])  
 
-    stim_start = len(stim_conc)-len(pad_right)-int(5*fr)
+    stim_start = len(stim_conc)-len(pad_right)-int(3*fr)
     stim_end = len(stim_conc)-len(pad_right)
 
     if ax != None:
         ax.plot(stim_conc,c='k')
         ax.set_ylim(0,1)
         ax.axvspan(stim_start, stim_end, color='y', alpha=0.1)
-        ax.set_ylabel("brightness", fontsize=18)
+        ax.set_ylabel("brightness", fontsize=13)
 
     return ax,stim_conc
 

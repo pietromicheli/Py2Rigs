@@ -5,6 +5,7 @@ import argparse
 from tifffile import TiffFile
 from natsort import natsorted
 from merge_sync_mat import merge_mat_files
+import yaml
 import suite2p
 
 parser = argparse.ArgumentParser(
@@ -23,13 +24,7 @@ parser.add_argument('data_paths', nargs='+', help='(list [str], input data paths
 parser.add_argument('-s', '--save_paths', nargs='+', help='(list [str], output save paths)')                    
 parser.add_argument('-m', '--merge', action='store_true', help='merge all the recordings found in the same data_path')
 
-def main(args):
-
-    dataDirs =  args.data_paths
-    if args.save_paths:
-        saveDirs = args.save_paths
-    else:
-        saveDirs = dataDirs
+def runs2p(dataDirs, saveDirs, merge=False):
 
     if len(dataDirs) != len(saveDirs):
         print()
@@ -37,22 +32,20 @@ def main(args):
         print("> ERROR: The number of save paths should match the number of data paths!")
         return 0
 
-    merge = args.merge
-
-    # set parameters
+    # set parameters to default
     ops = suite2p.default_ops()
 
-    ops['input_format'] = "tif"
-    ops['nchannels'] = 1
-    ops['tau'] = 0.11 #gCaMP8f
-    ops['fs'] = 15.49
-    ops['reg_tif'] = 0
-    ops['do_registration'] = 1
-    ops['delete_bin'] = 0
-    ops['denoise'] = 0
-    ops['max_overlap'] = 0.5
-    ops['anatomical_only'] = 3
-    ops['diameter'] = 5
+    #load parameters specified in a s2p_ops.yaml, if present
+    try:
+        with open('s2p_ops.yaml', "r") as f:
+
+            params = yaml.load(f, Loader=yaml.Loader)
+            print('> using parameters from s2p_ops.yaml')
+
+        for param in params:
+            ops[param]= params[param]
+    except:
+        print('> No s2p_ops.yaml file found in current directory, all parameters set to default')
 
     for i,(dataDir,saveDir) in enumerate(zip(dataDirs,saveDirs)):
 
@@ -90,26 +83,32 @@ def main(args):
                 # merge mat files
                 merge_mat_files([os.path.join(dataDir,name) for name in mat_names],offsets)
 
+            # run suite2p for all the recordings found
+            print("\n> Running Suite2p ...")
+
+            db = {
+                'data_path': [dataDir],
+                'save_path0': saveDir,
+                    }
+            suite2p.run_s2p(ops=ops, db=db)
+
         elif len(rec_names) > 1:
 
             # separate recording files in different directories
-            new_dataDirs = []
-            new_saveDirs = []
 
             for name in rec_names:
 
                 new_dataDir = os.path.join(dataDir,name)
+                
                 os.mkdir(new_dataDir)
-                new_dataDirs.append(new_dataDir)
 
                 if dataDir != saveDir:
 
                     new_saveDir = os.path.join(saveDir,name)
-                    os.mkdir(new_saveDir)
-                    new_saveDirs.append(new_saveDir)
+                    os.makedirs(new_saveDir)
 
                 else:
-                    new_saveDirs.append(new_dataDir)
+                    new_saveDir = new_dataDir
 
                 for file in files:
 
@@ -117,21 +116,35 @@ def main(args):
 
                         shutil.move(os.path.join(dataDir,file),new_dataDir)
 
-                
-            dataDirs.pop(i)
-            dataDirs[i:i] = new_dataDirs
-            saveDirs.pop(i)
-            saveDirs[i:i] = new_saveDirs
+                # run suite2p for all the recordings found
+                print("\n> Running Suite2p ...")
 
-    # run suite2p for all the recordings found
-    # for dataDir,saveDir in zip(dataDirs,saveDirs):
+                db = {
+                    'data_path': [new_dataDir],
+                    'save_path0': new_saveDir,
+                        }
+                suite2p.run_s2p(ops=ops, db=db)
 
-        db = {
-            'data_path': [dataDir],
-            'save_path0': saveDir,
-                }
-        suite2p.run_s2p(ops=ops, db=db)
+        else:
+
+            # run suite2p for all the recordings found
+            print("\n> Running Suite2p ...")
+
+            db = {
+                'data_path': [dataDir],
+                'save_path0': saveDir,
+                    }
+            suite2p.run_s2p(ops=ops, db=db)
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    main(args)
+
+    dataDirs =  args.data_paths
+    if args.save_paths:
+        saveDirs = args.save_paths
+    else:
+        saveDirs = dataDirs
+
+    merge = args.merge
+
+    runs2p(dataDirs,saveDirs,merge)

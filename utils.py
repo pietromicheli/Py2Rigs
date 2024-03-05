@@ -1,6 +1,7 @@
 import os
 import shutil
 import pathlib
+import h5py
 from scipy.signal import butter, filtfilt, sosfiltfilt, lfilter
 from scipy.optimize import curve_fit
 from scipy.fftpack import rfft, irfft, rfftfreq
@@ -42,6 +43,21 @@ def generate_params_file():
         print("> Using the parameters file found in current dir.")
 
         return "params.yaml"
+
+
+
+def save_dict_to_hdf5(dic, filename):
+
+    def _save_dict_to_hdf5(h5file, path, dic):
+        for key, item in dic.items():
+            if isinstance(item, dict):
+                _save_dict_to_hdf5(h5file, f"{path}/{key}", item)
+            else:
+                h5file[path + '/' + key] = item
+
+    with h5py.File(filename, 'w') as h5file:
+        _save_dict_to_hdf5(h5file, '/', dic)
+
 
 def compute_QI(trials: np.ndarray, pre_trial, mode=0):
 
@@ -114,34 +130,6 @@ def z_norm(s):
         s_std = np.std(s[nz],axis=1)
         zscored[nz] = ((s[nz].T - s_mean) / s_std).T
 
-    # elif len(s.shape)==1:
-
-    #     if len(s[s != 0])==0:
-
-    #         zscored = np.zeros(s.shape)
-
-    #     else:
-    #         s_mean = np.mean(s[s != 0])
-    #         s_std = np.std(s[s != 0])
-    #         zscored = (s - s_mean) / s_std
-        
-    # else:
-    #      # retrive rows with at least 2 values != 0
-    #     nz = nonzero(s)
-    #     zscored = s
-    #     s_mean = np.nanmean(np.where(s!=0,s,np.nan),1)[nz]
-    #     s_std = np.nanstd(np.where(s!=0,s,np.nan),1)[nz]
-    #     print(s_std)
-    #     zscored[nz] = ((s[nz].T - s_mean) / s_std).T
-
-    #     # if there is a row containing nan or inf, replace the values with 0
-    #     if any(np.any(np.isnan(zscored), axis=1)):
-
-    #         invalid_rows = np.where(np.any(np.isnan(zscored), axis=1)==True)
-    #         zscored[invalid_rows] = 0
-    #         # print('WARNING: std was 0 in rows:[{}]. '
-    #         #       'All values in these rows are setted to 0'.format(*invalid_rows))
-
     return zscored
 
 def lin_norm(s, lb=0, ub=1):
@@ -194,7 +182,6 @@ def GMM(data, **kwargs):
     gmm = BayesianGaussianMixture(**kwargs)
     gm_labels = gmm.fit_predict(data)
 
-    print(gmm.converged_)
     return gm_labels
 
 def find_optimal_kmeans_k(x):
@@ -206,7 +193,7 @@ def find_optimal_kmeans_k(x):
     # find optimal number of cluster for Kmeans
     Sum_of_squared_distances = []
 
-    K = range(1, 8)
+    K = range(2, 8)
 
     for k in K:
 
@@ -219,7 +206,7 @@ def find_optimal_kmeans_k(x):
     def _monoExp_(x, m, t, b):
         return m * np.exp(-t * x) + b
 
-    x = np.arange(1, 8)
+    x = np.arange(2, 8)
 
     p0 = (200, 0.1, 50)  # start with values near those we expect
 
@@ -227,7 +214,7 @@ def find_optimal_kmeans_k(x):
 
     m, t, b = p
 
-    x_plot = np.arange(1, 8, 0.01)
+    x_plot = np.arange(2, 8, 0.01)
 
     fitted_curve = _monoExp_(x_plot, m, t, b)
 

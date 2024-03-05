@@ -171,7 +171,6 @@ class Sync:
 
         return self
     
-
     def generate_data_structure_RF(
         self,
         sync_file: str,

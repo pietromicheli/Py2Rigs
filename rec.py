@@ -43,6 +43,12 @@ class Rec:
         self.ncells =  loader.ncells
         self.cells = []
         self.responsive = []
+        self.populations = []
+
+        if 'ops' in loader.__dict__:
+            self.ops = loader.ops
+        if 'stat' in loader.__dict__:
+            self.stat = loader.stat
 
         # SET PARAMETERS
         self.params_file = generate_params_file()
@@ -163,8 +169,7 @@ class Rec:
         stim_trials_dict=None, 
         rtype="norm", 
         normalize="zscore", 
-        smooth=True
-    ):
+        smooth=True):
 
         """
         Compute a fingerprint for each cell by concatenating the average responses
@@ -320,14 +325,19 @@ class Rec:
             xlabel = "UMAP 1"
             ylabel = "UMAP 2"
 
-        # clusterize
-        if k == None:
-            k = find_optimal_kmeans_k(transformed)
+        if k==1:
+            labels = np.zeros(len(cells_ids),dtype=int)
 
-        if clusters == 'kmeans':
-            labels = k_means(transformed, k)
-        elif clusters == 'gmm':
-            labels = GMM(transformed,n_components=(k),covariance_type='diag')
+        else:
+            # clusterize
+            if k == None:
+                k = find_optimal_kmeans_k(transformed)
+                print('Optimal k: ',k)
+
+            if clusters == 'kmeans':
+                labels = k_means(transformed, k)
+            elif clusters == 'gmm':
+                labels = GMM(transformed,n_components=(k),covariance_type='diag')
 
         plot_clusters(transformed,labels,None,xlabel,ylabel,save=save_name)
 
@@ -344,8 +354,47 @@ class Rec:
 
             pops.append(c)
 
-        return pops, labels
+        self.populations = pops
+
+        # assign pop label at each cell
+        for i,pop in enumerate(pops):
+            for id in pop:
+
+                self.cells[id].label = i
+
+        return self.populations
     
+    def get_pop_stats(
+        self,
+        cells_ids, 
+        stim_trials_dict=None, 
+        rtype='norm'):
+
+        """
+        return mean and std of a group of cells
+        """
+        if stim_trials_dict == None:
+
+            stim_trials_dict = {stim: list(self.sync.sync_ds[stim].keys())[:-1] 
+                                for stim in self.sync.stims_names}
+
+        stats = {s:{t:{} for t in stim_trials_dict[s]} for s in stim_trials_dict}
+
+        for s in stim_trials_dict:
+            for t in stim_trials_dict[s]:
+
+                avg = []
+                for c in cells_ids:
+
+                    r = self.cells[c].analyzed_trials[s][t]['%s_avg'%rtype]
+                    avg.append(r)
+
+                avg = np.mean(avg,axis=0)
+                sem = np.std(avg,axis=0)/np.sqrt(len(avg))
+                stats[s][t] |= {'%s_avg'%rtype:avg, '%s_sem'%rtype:sem} 
+
+        return stats
+
     def _bin_data_(self, binsize, mode='sum'):
 
         """
@@ -434,7 +483,7 @@ class Rec:
 
                     # extract only one baseline for each stimulus
                     mean_baseline = np.mean(
-                                    self.data[self.sync.sync_ds[stim]["stim_window"][0] - 
+                                    data[self.sync.sync_ds[stim]["stim_window"][0] - 
                                                 int(self.params["baseline_length"]*self.sf) : 
                                                 self.sync.sync_ds[stim]["stim_window"][0]])
 
@@ -671,7 +720,8 @@ class Rec:
                             }
                         c.norm = self.dataNorm[i]
                         c.raw = self.dataRaw[i]
-            
+
+    
             # store all the cells in a dictionary with id:cell items
             self.cells = {idx:cell for idx,cell in enumerate(cells)}
 
@@ -693,7 +743,11 @@ class Rec:
 
                     self.cells.pop(i)
 
-            
+            # order cells according to QI
+            qis = [c.qi for c in self.cells.values()]
+            sorted_ix = np.argsort(qis)[::-1]
+            self.cells = {list(self.cells.keys())[i]: self.cells[list(self.cells.keys())[i]] for i in sorted_ix}
+
             # retrive the indices of responsive cells
             self.responsive = self.get_responsive()
 

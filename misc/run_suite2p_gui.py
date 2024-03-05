@@ -31,7 +31,7 @@ def run_program(data_dirs,save_dirs,merge_bool,out):
 
 def select_data_folders(dirs = []):
 
-    data_folder_paths.extend(tkfilebrowser.askopendirnames())
+    data_folder_paths.extend(tkfilebrowser.askopendirnames(initialdir='Y:\\Group_folder\\recordings'))
     if data_folder_paths:
         out.insert(tk.END,'>Data folders added:\n')
         for path in data_folder_paths:
@@ -64,16 +64,25 @@ def run_button_callback(merge_bool,out):
 
 # Create the main application window
 app = tk.Tk()
+swidth = app.winfo_screenwidth()
+sheight = app.winfo_screenheight()
+
+app.configure(bg='black')
+app.geometry("%dx%d"%(int(swidth/4),int(sheight/3)))
 app.title("SUITE2P BATCH")
 
-out = tk.Text(app, wrap="none", height=20,borderwidth=0, bg='black', fg='green')
+button_h = 30
+sbar = 20
+button_w = (int(swidth/4)-sbar)/5
+
+
+out = tk.Text(app, wrap="none", bg='black', fg='green1')
+out.place(x=0,y=button_h, width=int(swidth/4)-2*sbar, height=int(sheight/3)-3*sbar-button_h)
 outVsb = tk.Scrollbar(app, orient="vertical", command=out.yview)
 outHsb = tk.Scrollbar(app, orient="horizontal", command=out.xview)
 out.configure(yscrollcommand=outVsb.set, xscrollcommand=outHsb.set)
-
-out.grid(row=4, column=0, columnspan=5, sticky="nsew")
-outVsb.grid(row=4, column=6 ,sticky="ns")
-outHsb.grid(row=5, column=0, columnspan=5, sticky="ew")
+outVsb.place(x=int(swidth/4)-2*sbar,y=button_h, width=sbar, height=int(sheight/3)-3*sbar-button_h)
+outHsb.place(x=0,y=int(sheight/3)-3*sbar, width=int(swidth/4)-sbar, height=sbar)
 
 sys.stdout = StdoutRedirector(out)
 sys.stderr = StdoutRedirector(out)
@@ -83,24 +92,30 @@ global data_folder_paths,save_folder_paths
 data_folder_paths = []
 save_folder_paths = []
 
-data_dirs = tk.Button(app, text='Data folder(s)*', command=select_data_folders)
-data_dirs.grid(row=1, column=0, sticky="W")
 
-save_dirs = tk.Button(app, text='Save folder(s)', command=select_save_folders)
-save_dirs.grid(row=1, column=1,sticky="W")
+data_dirs = tk.Button(app, text='Data folders*', command=select_data_folders)
+data_dirs.place(x=0,y=0, width=button_w, height=button_h)
+data_dirs.configure(bg='purple2')
+
+save_dirs = tk.Button(app, text='Save folders', command=select_save_folders)
+save_dirs.place(x=button_w,y=0, width=button_w, height=button_h)
+save_dirs.configure(bg='purple2')
 
 global boolvar
 merge_bool = tk.BooleanVar()
 merge_bool.set(False)
 
-merge_tick = tk.Checkbutton(app, text = "merge", variable = merge_bool)
-merge_tick.grid(row=1, column=2,sticky="W")
+merge_tick = tk.Checkbutton(app, text = "merge?", variable = merge_bool)
+merge_tick.place(x=button_w*2,y=0, width=button_w, height=button_h)
+merge_tick.configure(bg='orange2')
 
-clear = tk.Button(app, text='clear', command=clear_folders)
-clear.grid(row=1, column=3, ipadx=8)
+clear = tk.Button(app, text='CLEAR', command=clear_folders)
+clear.place(x=button_w*3,y=0, width=button_w, height=button_h)
+clear.configure(bg='red2')
 
 run_button = tk.Button(app, text="RUN !", command= lambda:run_button_callback(merge_bool,out))
-run_button.grid(row=2, column=0, columnspan=5, pady=20)
+run_button.place(x=button_w*4,y=0, width=button_w, height=button_h)
+run_button.configure(bg='green2')
 
 # Start the Tkinter event loop
 app.mainloop()
