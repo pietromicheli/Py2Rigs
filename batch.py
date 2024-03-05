@@ -44,17 +44,24 @@ class Batch:
         
         # RETRIVE SUPPLEMENTARY DATA #
             
-        ## for the data present in the  dataSupp of all the recording, keep only the shared ones.
-        dataSupp = [list(rec.dataSupp.keys()) for rec in recs_list]
+        ### for the data present in the  dataSupp of all the recording, keep only the shared ones.
+        # dataSupp = [list(rec.dataSupp.keys()) for rec in recs_list]
 
         ## start from minimal stim set
-        dataSupp_intersection = set(dataSupp[np.argmin([len(s) for s in dataSupp])])
+        # dataSupp_intersection = set(dataSupp[np.argmin([len(s) for s in dataSupp])])
 
-        for ds in dataSupp[1:]:
+        # for ds in dataSupp[1:]:
 
-            dataSupp_intersection.intersection(set(ds))
+        #     dataSupp_intersection.intersection(set(ds))
 
-        self.dataSupp_intersection = list(dataSupp_intersection)
+        # self.dataSupp_intersection = list(dataSupp_intersection)
+
+        ### or keep all the dataSupp available for from each recordings
+
+        self.dataSupp = []
+        for rec in recs_list: 
+            self.dataSupp.extend(list(rec.dataSupp.keys()))
+        self.dataSupp = np.unique(self.dataSupp)
 
         # RETRIVE STIMULATION PROTOCOLS #
             
@@ -109,10 +116,10 @@ class Batch:
         """
         Extract neural and supplementary data from all the recordings
         """
- 
-        cells = self._extract_data_(keep_unresponsive=keep_unresponsive)
+        
         suppData = self._extract_dataSupp_()
-
+        cells = self._extract_data_(keep_unresponsive=keep_unresponsive)
+        
         return cells
     
     def get_responsive(self):
@@ -138,8 +145,7 @@ class Batch:
         stim_trials_dict=None, 
         rtype="norm", 
         normalize="zscore", 
-        smooth=True
-    ):
+        smooth=True):
 
         """
         Compute a fingerprint for each cell by concatenating the average responses
@@ -325,7 +331,7 @@ class Batch:
 
         plot_clusters(transformed,labels,markers,xlabel,ylabel,groups_names=groups_names,save=save_name)
 
-        # get popos
+        # get popos BATCH
         pops = []
         for n in np.unique(labels):
 
@@ -346,7 +352,54 @@ class Batch:
 
                 self.cells[id].label = i
 
+        # get popos for each REC
+        for rec in self.recs.values():
+            pops_rec = []
+
+            for i in np.unique(labels):
+                pop = []
+                for id,c in rec.cells.items():
+                    if c.label == i:
+                        pop.append(id)
+
+                pops_rec.append(pop)
+            
+            rec.populations = pops_rec
+
+
         return self.populations
+   
+    def get_pop_stats(
+        self,
+        cells_ids, 
+        stim_trials_dict=None, 
+        rtype='norm'
+        ):
+
+        """
+        return mean and std of a group of cells
+        """
+        if stim_trials_dict == None:
+
+            stim_trials_dict = self.stims_trials_intersection
+
+        stats = {s:{t:{} for t in stim_trials_dict[s]} for s in stim_trials_dict}
+
+        for s in stim_trials_dict:
+            for t in stim_trials_dict[s]:
+
+                avg = []
+                for c in cells_ids:
+
+                    r = self.cells[c].analyzed_trials[s][t]['%s_avg'%rtype]
+                    avg.append(r)
+
+                avg = check_len_consistency(avg)
+                avg = np.mean(avg,axis=0)
+                sem = np.std(avg,axis=0)/np.sqrt(len(avg))
+                stats[s][t] |= {'%s_avg'%rtype:avg, '%s_sem'%rtype:sem} 
+
+        return stats
 
     def _extract_data_(self, keep_unresponsive=False):
 
@@ -369,13 +422,13 @@ class Batch:
             # retrive cells from each recording
             rec._extract_data_(keep_unresponsive)
 
-            for (cell_id, cell) in rec.cells.items():
+            for id,cell in rec.cells.items():
 
                 # new id
-                new_id = "%s_%s_%s" % (str(group_id), str(rec_id), str(cell_id))
+                new_id = "%s_%s_%s" % (str(group_id), str(rec_id), str(id))
                 self.cells |= {new_id: cell}
-                # update cell id
-                cell.id = new_id
+                # # update cell id
+                # cell.id = new_id
 
         # RETRIVE THE GROUPPED CELLS
         self.cells_groups = {g:{} for g in set(groups)}
@@ -395,15 +448,61 @@ class Batch:
         Extract the supplementary data (eye tracking, tredmill ecc.) from each recording.
         """
 
-        self.dataSupp_analyzed = {ds:{} for ds in self.dataSupp_intersection}
+        self.dataSupp_analyzed = {ds:{} for ds in self.dataSupp}
             
         for (rec_id, rec) in self.recs.items():
 
-            # retrive only shared dataSupp from each recording
-            rec._extract_dataSupp_(dataSupp_names=self.dataSupp_intersection)
+            print('\nRec %d :'%rec_id)
 
-            for dataSupp_name in self.dataSupp_intersection:
+            if not rec.dataSupp: continue
+            rec._extract_dataSupp_(dataSupp_names=list(rec.dataSupp.keys()))
+
+            for dataSupp_name in self.dataSupp:
 
                 self.dataSupp_analyzed[dataSupp_name] |= {rec.id:rec.dataSupp_analyzed[dataSupp_name]}
+
+        # extract averages across recs
+        if len(self.recs)>1:
+                
+            for dataSupp_name in self.dataSupp:
+
+                # prepare dict
+                batch_stat = {'batch_stat':{s:{t:{} for t in self.stims_trials_intersection[s]} for s in self.stims_trials_intersection}}
+
+                self.dataSupp_analyzed[dataSupp_name] |= batch_stat
+
+                for stim in self.stims_trials_intersection:
+                    for trial in self.stims_trials_intersection[stim]:
+                        
+                        avg_norm = []
+                        std_norm = []
+                        avg_raw = []
+                        std_raw = []
+                        for (rec_id, rec) in self.recs.items():
+
+                            if dataSupp_name not in rec.dataSupp:
+                                continue
+                            
+                            dataSupp = rec.dataSupp_analyzed[dataSupp_name]
+                            avg_norm.append(dataSupp[stim][trial]['norm_avg'])
+                            std_norm.append(dataSupp[stim][trial]['norm_std'])
+                            avg_raw.extend(dataSupp[stim][trial]['trials_raw'])
+                            std_raw.append(dataSupp[stim][trial]['raw_std'])
+
+                        avg_norm = check_len_consistency(avg_norm)
+                        std_norm = check_len_consistency(std_norm)
+                        avg_raw = check_len_consistency(avg_raw)
+                        std_raw = check_len_consistency(std_raw)
+                        # sem = np.std(avg, axis=0)/np.sqrt(len(avg))
+                        avg_norm = np.mean(avg_norm,axis=0)
+                        std_norm = np.mean(std_norm,axis=0)
+                        avg_raw = np.mean(avg_raw,axis=0)
+                        std_raw = np.mean(std_raw,axis=0)
+
+                        batch_stat['batch_stat'][stim][trial] |= {'norm_avg':avg_norm, 'norm_std':std_norm,  
+                                                                'raw_avg':avg_raw, 'raw_std':std_raw, 
+                                                                'window':dataSupp[stim][trial]['window']}
+
+                self.dataSupp_analyzed[dataSupp_name] |= batch_stat
 
         return self.dataSupp_analyzed
