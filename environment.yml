@@ -2,16 +2,8 @@ name: py2rigs
 channels:
   - defaults
 dependencies:
-  - ca-certificates=2023.12.12=haa95532_0
-  - libffi=3.4.4=hd77b12b_0
-  - openssl=3.0.12=h2bbff1b_0
-  - pip=23.3.1=py38haa95532_0
-  - python=3.8.18=h1aa4202_0
-  - setuptools=68.2.2=py38haa95532_0
-  - sqlite=3.41.2=h2bbff1b_0
-  - vc=14.2=h21ff451_1
-  - vs2015_runtime=14.27.29016=h5e58377_2
-  - wheel=0.41.2=py38haa95532_0
+  - pip
+  - python=3.9
   - pip:
       - h5py==3.10.0
       - json5==0.9.6
@@ -27,5 +19,4 @@ dependencies:
       - tk==0.1.0
       - tkfilebrowser==2.3.2
       - tqdm==4.66.1
-      - yaml==0.2.5
-prefix: C:\Users\micheli\Anaconda3\envs\py2rigs
+      - pyyaml==0.2.5
