@@ -44,24 +44,24 @@ class Batch:
         
         # RETRIVE SUPPLEMENTARY DATA #
             
-        ### for the data present in the  dataSupp of all the recording, keep only the shared ones.
-        # dataSupp = [list(rec.dataSupp.keys()) for rec in recs_list]
+        ### for the data present in the  dataBehav of all the recording, keep only the shared ones.
+        # dataBehav = [list(rec.dataBehav.keys()) for rec in recs_list]
 
         ## start from minimal stim set
-        # dataSupp_intersection = set(dataSupp[np.argmin([len(s) for s in dataSupp])])
+        # dataBehav_intersection = set(dataBehav[np.argmin([len(s) for s in dataBehav])])
 
-        # for ds in dataSupp[1:]:
+        # for ds in dataBehav[1:]:
 
-        #     dataSupp_intersection.intersection(set(ds))
+        #     dataBehav_intersection.intersection(set(ds))
 
-        # self.dataSupp_intersection = list(dataSupp_intersection)
+        # self.dataBehav_intersection = list(dataBehav_intersection)
 
-        ### or keep all the dataSupp available for from each recordings
+        ### or keep all the dataBehav available for from each recordings
 
-        self.dataSupp = []
+        self.dataBehav = []
         for rec in recs_list: 
-            self.dataSupp.extend(list(rec.dataSupp.keys()))
-        self.dataSupp = np.unique(self.dataSupp)
+            self.dataBehav.extend(list(rec.dataBehav.keys()))
+        self.dataBehav = np.unique(self.dataBehav)
 
         # RETRIVE STIMULATION PROTOCOLS #
             
@@ -114,10 +114,10 @@ class Batch:
     def extract_all(self, keep_unresponsive=False):
 
         """
-        Extract neural and supplementary data from all the recordings
+        Extract neural and behavioral data from all the recordings
         """
         
-        suppData = self._extract_dataSupp_()
+        behavior = self._extract_dataBehav_()
         cells = self._extract_data_(keep_unresponsive=keep_unresponsive)
         
         return cells
@@ -241,8 +241,7 @@ class Batch:
         tsne_params=None,
         umap_params=None,
         marker_mode=1,
-        **kwargs
-        ):
+        **kwargs):
 
         '''
 
@@ -271,6 +270,7 @@ class Batch:
             if marker_mode == 0: groups_names = list(self.recs_groups.keys())
             else: groups_names = list(self.recs.keys())
 
+        # get neural activity fingerprints
         fp = self.compute_fingerprints(
                     cells_ids = cells_ids,
                     **kwargs)
@@ -315,13 +315,18 @@ class Batch:
             ylabel = "UMAP 2"
 
         # clusterize
-        if k == None:
-            k = find_optimal_kmeans_k(transformed)
+            
+        if k != 0:
+            if k == None:
+                k = find_optimal_kmeans_k(transformed)
 
-        if clusters == 'kmeans':
-            labels = k_means(transformed, k)
-        elif clusters == 'gmm':
-            labels = GMM(transformed,n_components=(k),covariance_type='diag')
+            if clusters == 'kmeans':
+                labels = k_means(transformed, k)
+            elif clusters == 'gmm':
+                labels = GMM(transformed,n_components=(k),covariance_type='diag')
+            
+        else:
+            labels = np.zeros(len(cells_ids),dtype=int)
 
         if markers:
             markers = [int(id.split(sep='_')[marker_mode]) for id in cells_ids]
@@ -329,7 +334,7 @@ class Batch:
         else:
             markers=None
 
-        plot_clusters(transformed,labels,markers,xlabel,ylabel,groups_names=groups_names,save=save_name)
+        plot_clusters(transformed,labels,markers,xlabel,ylabel,groups_names=groups_names,save=save_name,grid=False)
 
         # get popos BATCH
         pops = []
@@ -442,34 +447,36 @@ class Batch:
 
         return self.cells
 
-    def _extract_dataSupp_(self):
+    def _extract_dataBehav_(self):
 
         """
-        Extract the supplementary data (eye tracking, tredmill ecc.) from each recording.
+        Extract the behavioral data (eye tracking, tredmill ecc.) from each recording.
         """
 
-        self.dataSupp_analyzed = {ds:{} for ds in self.dataSupp}
+        self.dataBehav_analyzed = {ds:{} for ds in self.dataBehav}
             
         for (rec_id, rec) in self.recs.items():
 
             print('\nRec %d :'%rec_id)
 
-            if not rec.dataSupp: continue
-            rec._extract_dataSupp_(dataSupp_names=list(rec.dataSupp.keys()))
+            if not rec.dataBehav: continue
+            rec._extract_dataBehav_(dataBehav_names=list(rec.dataBehav.keys()))
 
-            for dataSupp_name in self.dataSupp:
+            for dataBehav_name in self.dataBehav:
 
-                self.dataSupp_analyzed[dataSupp_name] |= {rec.id:rec.dataSupp_analyzed[dataSupp_name]}
+                if dataBehav_name not in rec.dataBehav_analyzed: continue
 
+                self.dataBehav_analyzed[dataBehav_name] |= {rec.id:rec.dataBehav_analyzed[dataBehav_name]}
+        
         # extract averages across recs
         if len(self.recs)>1:
                 
-            for dataSupp_name in self.dataSupp:
+            for dataBehav_name in self.dataBehav:
 
                 # prepare dict
                 batch_stat = {'batch_stat':{s:{t:{} for t in self.stims_trials_intersection[s]} for s in self.stims_trials_intersection}}
 
-                self.dataSupp_analyzed[dataSupp_name] |= batch_stat
+                self.dataBehav_analyzed[dataBehav_name] |= batch_stat
 
                 for stim in self.stims_trials_intersection:
                     for trial in self.stims_trials_intersection[stim]:
@@ -480,29 +487,28 @@ class Batch:
                         std_raw = []
                         for (rec_id, rec) in self.recs.items():
 
-                            if dataSupp_name not in rec.dataSupp:
+                            if dataBehav_name not in rec.dataBehav:
                                 continue
                             
-                            dataSupp = rec.dataSupp_analyzed[dataSupp_name]
-                            avg_norm.append(dataSupp[stim][trial]['norm_avg'])
-                            std_norm.append(dataSupp[stim][trial]['norm_std'])
-                            avg_raw.extend(dataSupp[stim][trial]['trials_raw'])
-                            std_raw.append(dataSupp[stim][trial]['raw_std'])
+                            dataBehav = rec.dataBehav_analyzed[dataBehav_name]
+                            avg_norm.append(dataBehav[stim][trial]['norm_avg'])
+                            std_norm.append(dataBehav[stim][trial]['norm_err'])
+                            avg_raw.extend(dataBehav[stim][trial]['trials_raw'])
+                            std_raw.append(dataBehav[stim][trial]['raw_err'])
 
                         avg_norm = check_len_consistency(avg_norm)
-                        std_norm = check_len_consistency(std_norm)
                         avg_raw = check_len_consistency(avg_raw)
-                        std_raw = check_len_consistency(std_raw)
-                        # sem = np.std(avg, axis=0)/np.sqrt(len(avg))
+
+                        sem_norm = np.std(avg_norm, axis=0)/np.sqrt(len(avg_norm))
+                        sem_raw = np.std(avg_raw, axis=0)/np.sqrt(len(avg_raw))
+
                         avg_norm = np.mean(avg_norm,axis=0)
-                        std_norm = np.mean(std_norm,axis=0)
                         avg_raw = np.mean(avg_raw,axis=0)
-                        std_raw = np.mean(std_raw,axis=0)
 
-                        batch_stat['batch_stat'][stim][trial] |= {'norm_avg':avg_norm, 'norm_std':std_norm,  
-                                                                'raw_avg':avg_raw, 'raw_std':std_raw, 
-                                                                'window':dataSupp[stim][trial]['window']}
+                        batch_stat['batch_stat'][stim][trial] |= {'norm_avg':avg_norm, 'norm_err':sem_norm,  
+                                                                'raw_avg':avg_raw, 'raw_err':sem_raw, 
+                                                                'window':dataBehav[stim][trial]['window']}
 
-                self.dataSupp_analyzed[dataSupp_name] |= batch_stat
+                self.dataBehav_analyzed[dataBehav_name] |= batch_stat
 
-        return self.dataSupp_analyzed
+        return self.dataBehav_analyzed

@@ -44,22 +44,43 @@ def generate_params_file():
 
         return "params.yaml"
 
-
-
 def save_dict_to_hdf5(dic, filename):
 
     def _save_dict_to_hdf5(h5file, path, dic):
+
         for key, item in dic.items():
+
             if isinstance(item, dict):
-                _save_dict_to_hdf5(h5file, f"{path}/{key}", item)
+                _save_dict_to_hdf5(h5file, f"{path}/{str(key)}", item)
+
             else:
-                h5file[path + '/' + key] = item
+                try:
+                    h5file[path + '/' + str(key)] = item
+                except:
+                    # save the item in string format
+                    h5file[path + '/' + str(key)] = str(item)
 
     with h5py.File(filename, 'w') as h5file:
         _save_dict_to_hdf5(h5file, '/', dic)
+        h5file.close()
 
+def hdf5_to_dict(h5_obj):
 
-def compute_QI(trials: np.ndarray, pre_trial, mode=0):
+    dict_out = {}
+    for key in h5_obj.keys():
+
+        if isinstance(h5_obj[key], h5py.Group):
+            dict_out[key] = hdf5_to_dict(h5_obj[key])  # Recursively convert subgroup to dictionary
+
+        elif isinstance(h5_obj[key], h5py.Dataset):
+            dict_out[key] = h5_obj[key][()]  # Convert dataset to NumPy array and store in dictionary
+            # fix str to obj conversion bug
+            if isinstance(dict_out[key], np.ndarray):
+                if dict_out[key].dtype == 'O': dict_out[key] = dict_out[key].astype(str)
+    
+    return dict_out
+
+def compute_QI(trials: np.ndarray, slice=(0,-1), mode=0):
 
         """
         Calculate response quality index as defined by
@@ -72,20 +93,9 @@ def compute_QI(trials: np.ndarray, pre_trial, mode=0):
             if not nz:
                 return 0
             
-            a = np.var(trials[nz].mean(axis=0))
-            b = np.mean(trials[nz].var(axis=1))
+            a = np.var(trials[nz][:,slice[0]:slice[1]].mean(axis=0))
+            b = np.mean(trials[nz][:,slice[0]:slice[1]].var(axis=1))
             return a / b
-        
-        else:
-
-            n = trials.shape[0]
-            mean = np.mean(trials, axis=0)
-            pre = mean[pre_trial]
-            post = mean[pre_trial]
-            pvalue = ttest_ind(pre,post)[1]
-            # adjust pvalue using Sidak correction
-            pvalue_corr = 1-(1-pvalue)**n
-            return pvalue_corr
         
 def filter(s, wn, ord=6, btype="low", analog=False, fs=None, mode="filtfilt"):
 

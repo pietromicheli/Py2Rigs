@@ -15,9 +15,9 @@ class Cell:
 
         self.id = id
         self.rec = rec
-        self.label = None # usefull for pop analysis
+        self.label = 0 # usefull for pop analysis
         self.qi = 0
-        self.responsive = None
+        self.responsive = 0
         self.analyzed_trials = {}
         self.params = rec.params
         self.sync = rec.sync
@@ -54,7 +54,6 @@ class Cell:
         snr_b = abs(np.mean(b_s) / np.std(b_n))
 
         return snr_a / snr_b, snr_a, snr_b
-
 
     def is_responsive(self):
 
@@ -97,7 +96,7 @@ class Cell:
 
         return responsive
 
-    def calculate_modulation(self, stim, trial_name_1, trial_name_2, rtype=None, mode="rmi", slice=(0,-1), **kwargs):
+    def calculate_modulation(self, stim, trial_name_1, trial_name_2, rtype='norm', mode="rmi", slice=(0,-1), **kwargs):
 
         """
         Calculate Response Modulation Index on averaged responses to
@@ -119,8 +118,8 @@ class Cell:
 
             self.analyze()
 
-        average_resp_1 = self.analyzed_trials[stim][trial_name_1]["average_"%rtype][slice[0]:slice[1]]
-        average_resp_2 = self.analyzed_trials[stim][trial_name_2]["average_"%rtype][slice[0]:slice[1]]
+        average_resp_1 = self.analyzed_trials[stim][trial_name_1]["%s_avg"%rtype][slice[0]:slice[1]]
+        average_resp_2 = self.analyzed_trials[stim][trial_name_2]["%s_avg"%rtype][slice[0]:slice[1]]
 
 
         if mode == "rmi":

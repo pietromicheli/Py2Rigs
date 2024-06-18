@@ -3,19 +3,21 @@ import os
 import numpy as np
 import warnings
 import json
+import h5py
+from .utils import hdf5_to_dict
 
 class Dataloader():
 
     def __init__(self, group:int=0):
         
-        self.dype = None
         self.dataRaw = np.empty(0)
         self.sync = None
-        self.dataSupp = {}
+        self.dataBehav = {}
         self.group = group
         self.dtype = None
         self.rec_length = None
         self.ncells = None
+        self.precomputed = False
 
     def load_sync(self, sync_file, stim_dict_file, trials_names=None):
         
@@ -78,7 +80,7 @@ class Dataloader():
             self.rec_length = self.dataRaw.shape[1]            
             self.ncells = self.dataRaw.shape[0]
 
-            print("Loaded arrays of size %dx%d\n"%(self.ncells, self.rec_length))
+            print("Loaded matrix of size %dx%d\n"%(self.ncells, self.rec_length))
 
         return self
 
@@ -88,7 +90,7 @@ class Dataloader():
 
         if not os.path.isdir(s2p_dir_path):
 
-            raise Exception("ERROR: Please provide a valid data path to a suite2p output direcory")
+            raise Exception(f"'{s2p_dir_path}' is not valid. Please provide a valid data path to a suite2p output direcory")
         
         files = os.listdir(s2p_dir_path)
 
@@ -119,11 +121,13 @@ class Dataloader():
               "iscell.npy not found in %s"%s2p_dir_path, RuntimeWarning)
         try:
             self.stat = np.load(s2p_dir_path + r"/stat.npy", allow_pickle=True)
+            self.stat = {id:stats for id,stats in enumerate(self.stat)}
         except:
              warnings.warn("WARNING:",
               "stat.npy not found in %s"%s2p_dir_path, RuntimeWarning)
         try:
             self.ops = np.load(s2p_dir_path + r"/ops.npy", allow_pickle=True)
+            self.ops = self.ops.item()
         except:
              warnings.warn("WARNING:",
               "ops.npy not found in %s"%s2p_dir_path, RuntimeWarning)
@@ -161,21 +165,63 @@ class Dataloader():
 
         return self
 
-    def load_supp(self, dataSupp_path, data_name):
+    def load_behav(self, dataBehav_path, data_name):
 
         """
-        Load supplementary 1D data, such as tracked pupil area, tradmill, ecc.
+        Load behavioral 1D data, such as tracked pupil area, tradmill, ecc.
         """
 
-        ext = os.path.splitext(dataSupp_path)[1]
+        ext = os.path.splitext(dataBehav_path)[1]
         if ext != '.npy':
 
             raise Exception("ERROR: Please provide a data path to a .npy file.")
 
         print('> loading %s ...'%data_name, end='')
-        data = np.load(dataSupp_path)
-        self.dataSupp |= {data_name: data}
+        data = np.load(dataBehav_path)
+        self.dataBehav |= {data_name: data}
         print('OK')
 
         if self.rec_length == None: self.rec_length = data.size
+    
+    def load_from_5h(self, h5_path):
 
+        """
+        Load data from a properly structured h5 file contained pre-extracted data 
+        """
+
+        # load data
+        print("> loading pre-analyzed data from %s ..." % h5_path, end=" ")
+        
+        with h5py.File(h5_path, "r") as h5file:
+
+            for key in self.__dict__.keys():
+
+                if key == 'sync': continue
+                
+                if isinstance(h5file[key], h5py.Group):
+                    self.__dict__[key] = hdf5_to_dict(h5file[key])
+
+                else:
+                    self.__dict__[key] = h5file[key][()]
+
+            # create sync
+                
+            sync_dict = hdf5_to_dict(h5file['sync'])
+            sync_ = sync.Sync()
+
+            for key,value in sync_dict.items():
+            
+                sync_.__dict__[key] = value
+
+            self.sync = sync_
+        
+        print("OK!")
+            
+        self.precomputed = True
+        self.h5_path = h5_path
+
+        return self
+
+
+
+        
