@@ -1,6 +1,7 @@
 import numpy as np
 from .rec import Rec 
 from .utils import *
+from.sync import Sync
 from .plot import plot_clusters
 from sklearn.decomposition import PCA
 from umap import UMAP
@@ -96,6 +97,12 @@ class Batch:
 
             self.stims_trials_intersection |= {stim: list(trials_intersection)}
 
+        # create a batch sync obj
+        self.sync = Sync()
+        self.sync.stims_names = list(stims_intersection)
+        self.sync.trials_names = {i:trial_name for i, trial_name in enumerate(list(trials_intersection))}
+        self.sync.stim_dict = self.stims_trials_intersection
+
         self.cells = None
         self.populations = []
 
@@ -119,6 +126,7 @@ class Batch:
         
         behavior = self._extract_dataBehav_()
         cells = self._extract_data_(keep_unresponsive=keep_unresponsive)
+        self.responsive = self.get_responsive()
         
         return cells
     
@@ -168,7 +176,7 @@ class Batch:
 
         if stim_trials_dict == None:
 
-            stim_trials_dict = {stim: [] for stim in self.stims_trials_intersection}
+            stim_trials_dict = {stim: [] for stim in self.sync.stim_dict}
 
         responsive = self.get_responsive()
 
@@ -191,7 +199,7 @@ class Batch:
 
                 if not trials_names:
 
-                    trials_names = list(self.stims_trials_intersection[stim])
+                    trials_names = list(self.sync.stim_dict[stim])
 
                 for trial_name in trials_names:
 
@@ -314,9 +322,12 @@ class Batch:
             xlabel = "UMAP 1"
             ylabel = "UMAP 2"
 
-        # clusterize
-            
-        if k != 0:
+
+        if k==1:
+            labels = np.zeros(len(cells_ids),dtype=int)
+  
+        else:
+            # clusterize
             if k == None:
                 k = find_optimal_kmeans_k(transformed)
 
@@ -324,9 +335,6 @@ class Batch:
                 labels = k_means(transformed, k)
             elif clusters == 'gmm':
                 labels = GMM(transformed,n_components=(k),covariance_type='diag')
-            
-        else:
-            labels = np.zeros(len(cells_ids),dtype=int)
 
         if markers:
             markers = [int(id.split(sep='_')[marker_mode]) for id in cells_ids]
@@ -334,7 +342,7 @@ class Batch:
         else:
             markers=None
 
-        plot_clusters(transformed,labels,markers,xlabel,ylabel,groups_names=groups_names,save=save_name,grid=False)
+        fig = plot_clusters(transformed,labels,markers,xlabel,ylabel,groups_names=groups_names,save=save_name,grid=False)
 
         # get popos BATCH
         pops = []
@@ -372,7 +380,7 @@ class Batch:
             rec.populations = pops_rec
 
 
-        return self.populations
+        return self.populations, fig
    
     def get_pop_stats(
         self,
@@ -386,7 +394,7 @@ class Batch:
         """
         if stim_trials_dict == None:
 
-            stim_trials_dict = self.stims_trials_intersection
+            stim_trials_dict = self.sync.stim_dict
 
         stats = {s:{t:{} for t in stim_trials_dict[s]} for s in stim_trials_dict}
 
@@ -474,12 +482,12 @@ class Batch:
             for dataBehav_name in self.dataBehav:
 
                 # prepare dict
-                batch_stat = {'batch_stat':{s:{t:{} for t in self.stims_trials_intersection[s]} for s in self.stims_trials_intersection}}
+                batch_stat = {'batch_stat':{s:{t:{} for t in self.sync.stim_dict[s]} for s in self.sync.stim_dict}}
 
                 self.dataBehav_analyzed[dataBehav_name] |= batch_stat
 
-                for stim in self.stims_trials_intersection:
-                    for trial in self.stims_trials_intersection[stim]:
+                for stim in self.sync.stim_dict:
+                    for trial in self.sync.stim_dict[stim]:
                         
                         avg_norm = []
                         std_norm = []
