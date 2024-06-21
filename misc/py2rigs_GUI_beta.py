@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
-import subprocess
+from tkinter import filedialog
+from functools import partial
 import sys
 import time
 import matplotlib.pyplot as plt
@@ -12,16 +13,6 @@ from Py2Rigs import rec, sync, loader, batch
 from Py2Rigs.plot import *
 
 INPUT_LIST = ['data_paths','sync_paths','stimdict_paths','behavior_paths']
-
-TEST_PATHS = [r"Y:\Pietro\2Precordings\PM_230224_OBO041195\rec_000_001\suite2p\plane0",
-              r"Y:\Pietro\2Precordings\PM_230224_OBO041195\rec_000_001\rec_000_001.mat",
-              r"Y:\Pietro\2Precordings\PM_230224_OBO041195\rec_000_001\stim_dict_PM_230224_OBO041195_001.json",
-              r"Y:\Pietro\2Precordings\PM_230224_OBO041195\rec_000_001\contra_pupil_001.npy" ]
-
-# TEST_PATHS = [r"Y:\Pietro\2Precordings\PM_050424_OBO042444\rec_000_000\suite2p\plane0",
-#               r"Y:\Pietro\2Precordings\PM_050424_OBO042444\rec_000_000\rec_000_000.mat",
-#               r"Y:\Pietro\2Precordings\PM_050424_OBO042444\rec_000_000\stim_dict_PM_050424_OBO042444_000.json",
-#                '' ]
 
 class StdoutRedirector:
 
@@ -36,7 +27,9 @@ class StdoutRedirector:
         pass
 
 class InputFrame:
-    
+
+    INPUT_LIST = ['data_paths','sync_paths','stimdict_paths','behavior_paths']
+
     def __init__(self, master, run_command):
 
         ttk.Style().configure('TFrame', background='black')
@@ -47,31 +40,38 @@ class InputFrame:
 
         self.master = master
         self.run_command = run_command
+        self.init_loc = '/'
 
         # input section
-        self.input_paths = {ptype:tk.StringVar() for ptype in INPUT_LIST}
-        self.input_lists = {ptype:[] for ptype in INPUT_LIST}
+        self.input_paths = {ptype:tk.StringVar() for ptype in self.INPUT_LIST}
+        self.input_lists = {ptype:[] for ptype in self.INPUT_LIST}
+        self.nrecs = 0
 
         self.input_frame = ttk.Frame(self.master, style='TFrame')
         label = ttk.Label(self.input_frame, text="INPUTS", style='S.TLabel')
         label.grid(row=0, column=0, padx=0,sticky='nw')
         
-        for i,(path_name, path_label) in enumerate(zip(INPUT_LIST,["* Data Path:", 
+        for i,(path_name, path_label) in enumerate(zip(self.INPUT_LIST,["* Data Path:", 
                                                                    "* Sync File (.mat):", 
                                                                    "* Event Dictionary (.json):", 
                                                                    "  Behavior (.npy):"])):
-            
+            if path_label=='* Data Path:':
+                command = partial(self.browseDir,path_name)
+            else:
+                command = partial(self.browseFiles,path_name)
+
             label = ttk.Label(self.input_frame, text=path_label, style='BW.TLabel')
             label.grid(row=i+1, column=0, padx=0, sticky="nsew")
-            entry = ttk.Entry(self.input_frame, textvariable=self.input_paths[path_name])
+            entry = ttk.Button(self.input_frame, text='browse ...', command=command)
             entry.grid(row=i+1, column=1, pady=5, padx=5, sticky='nsew')
         
-        b1 = ttk.Button(self.input_frame, text="Add Paths", style='BW.TButton', command=lambda path=path_name: self.add_paths())
+        b1 = ttk.Button(self.input_frame, text="Add Recording", style='BW.TButton', command=lambda path=path_name: self.add_paths())
         b1.grid(row=2, column=2, padx=3, pady=5, sticky='nsew')
         b2 = ttk.Button(self.input_frame, text="CLEAR", style='BW.TButton', command=self.clear)
         b2.grid(row=3, column=2, pady=5, padx=3, sticky='nsew')
+
         b3 = ttk.Button(self.input_frame, text="RUN", style='BW.TButton', command=self.run_callback)
-        b3.grid(row=4, column=2, columnspan=2, padx=3, pady=5, sticky='nsew')
+        b3.grid(row=4, column=2, columnspan=1, padx=3, pady=5, sticky='nsew')
         
         # Standard Output Window
         self.output_frame = ttk.Frame(self.master, style='TFrame')
@@ -85,12 +85,26 @@ class InputFrame:
         sys.stdout = StdoutRedirector(self.output_text)
         sys.stderr = StdoutRedirector(self.output_text)
     
+    def browseFiles(self, path_name):
+        filename = filedialog.askopenfilename(initialdir = self.init_loc,
+                                                title = "Select a File")  
+        path_var = self.input_paths[path_name]
+        path_var.set(filename)
+
+    def browseDir(self, path_name):
+        dirname = filedialog.askdirectory(initialdir = self.init_loc,
+                                           title = "Select a Suite2p output directory")
+        path_var = self.input_paths[path_name]
+        path_var.set(dirname)
+        self.init_loc = dirname
+
     def clear(self):
 
         for ptype in self.input_paths.values(): ptype.set('')  
-        self.input_lists = {ptype:[] for ptype in INPUT_LIST}
+        self.input_lists = {ptype:[] for ptype in self.INPUT_LIST}
         self.output_text.delete('1.0', tk.END)
-
+        if self.nrecs !=0: self.nrecs -= 1
+    
     def add_paths(self):
 
         for i,path_name in enumerate(self.input_paths):
@@ -101,15 +115,17 @@ class InputFrame:
 
             if path=='':
                 if path_name != 'behavior_paths'and path_name != 'data_paths':
-                    print(f'\nERROR: Please provide all the required paths before adding!')
-                    self.clear()
+                    return f'\nERROR: Please provide all the required paths before adding!'
+                    # self.clear()
                 else:
                     path = None
 
             self.input_lists[path_name].append(path)
             path_var.set("")
-            self.output_text.insert(tk.END, f"\nAdded '{path}' to {path_name} list.\n")
-            self.output_text.see(tk.END)
+
+        self.output_text.insert(tk.END, f"\nAdded REC_%d to batch list.\n"%self.nrecs)
+        self.output_text.see(tk.END)
+        self.nrecs += 1
 
     def run_callback(self):
 
@@ -222,7 +238,7 @@ class GUI:
         self.f2_w = 15
         self.f2_h = 5
         self.f3_w = 15
-        self.f3_h = 4
+        self.f3_h = 3
 
         self.width = 1520
         self.height = 1420
@@ -244,26 +260,26 @@ class GUI:
         self.plot1 = PlotSection(master, figsize=(self.f1_w,self.f1_h))
         self.plot1.plotting_frame.grid(row=0, column=1, rowspan=2, pady=10, padx=10, sticky='nsew')
         
-        self.pops_embed = tk.StringVar()
+        self.pops_embed = tk.StringVar(value='pca')
         self.pops_k = tk.StringVar()
-        self.pops_clust = tk.StringVar()
+        self.pops_clust = tk.StringVar(value='kmeans')
 
         b = self.plot1.add_button('GET POPULATIONS', self.plot_pops, "BW.TButton",)
         b.grid(row=0,column=0)
 
         l = self.plot1.add_label('embeding', "BW.TLabel")
         l = l.grid(row=0,column=1,sticky='w') 
-        m = self.plot1.add_menu(self.pops_embed, ["pca", "pca", "umap", "tsne"])
+        m = self.plot1.add_menu(self.pops_embed, ["pca", "umap", "tsne"])
         m.grid(row=0,column=2,sticky='w')
 
         l = self.plot1.add_label('n_clusers', "BW.TLabel",)
         l.grid(row=0,column=3,sticky='w')
-        m = self.plot1.add_menu(self.pops_k, ["1", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"])
+        m = self.plot1.add_menu(self.pops_k, ['2', "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"])
         m.grid(row=0,column=4,sticky='w')
 
         l = self.plot1.add_label('clustering', "BW.TLabel",)
         l.grid(row=0,column=5,sticky='w')
-        m = self.plot1.add_menu(self.pops_clust, ["kmeans", "kmeans", "gmm"])
+        m = self.plot1.add_menu(self.pops_clust, [ "kmeans", "gmm"])
         m.grid(row=0,column=6,sticky='w')
 
         self.plot1.update()
@@ -274,21 +290,27 @@ class GUI:
         self.plot2 = PlotSection(master, figsize=(self.f1_w,self.f1_h))
         self.plot2.plotting_frame.grid(row=0, column=2, rowspan=2, pady=10, padx=10, sticky='nsew')
         
-        self.fov_pops = tk.StringVar()
+        self.fov_pops = tk.StringVar(value='all')
+        self.fov_recs = tk.StringVar(value='0')
 
         b = self.plot2.add_button('PLOT FOV', self.plot_fov, "BW.TButton",)
         b.grid(row=0,column=0)
 
-        l = self.plot2.add_label('populations', "BW.TLabel")
+        l = self.plot2.add_label('rec', "BW.TLabel")
         l = l.grid(row=0,column=1,sticky='w')
-        self.fov_pops_m = self.plot2.add_menu(self.fov_pops, ['None', 'None'])
-        self.fov_pops_m.grid(row=0,column=2,sticky='w')
+        self.fov_recs_m = self.plot2.add_menu(self.fov_recs, [])
+        self.fov_recs_m.grid(row=0,column=2,sticky='w')
+
+        l = self.plot2.add_label('populations', "BW.TLabel")
+        l = l.grid(row=0,column=3,sticky='w')
+        self.fov_pops_m = self.plot2.add_menu(self.fov_pops, [])
+        self.fov_pops_m.grid(row=0,column=4,sticky='w')
 
         l = self.plot2.add_label('brighness (int)', "BW.TLabel")
-        l.grid(row=0,column=3,sticky='w')
+        l.grid(row=0,column=5,sticky='w')
         self.fov_bright_f = self.plot2.add_entry()
         self.fov_bright_f.insert(0, 'None')
-        self.fov_bright_f.grid(row=0,column=4,sticky='w')
+        self.fov_bright_f.grid(row=0,column=6,sticky='w')
 
         self.plot2.update()
 
@@ -299,6 +321,7 @@ class GUI:
         self.plot3.plotting_frame.grid(row=2, column=0, pady=10, padx=10, columnspan=3)
         
         self.act_pop = tk.StringVar(value='0')
+        self.act_recs = tk.StringVar(value='0')
         self.act_stims = tk.StringVar(value='all')
         self.act_trials = tk.StringVar(value='all')
         self.act_full = tk.StringVar(value='None')
@@ -312,23 +335,28 @@ class GUI:
         self.act_pop_m = self.plot3.add_menu(self.act_pop, [])
         self.act_pop_m.grid(row=0,column=2,sticky='w')
 
-        l = self.plot3.add_label('stimuli', "BW.TLabel",)
+        l = self.plot3.add_label('rec', "BW.TLabel",)
         l.grid(row=0,column=3,sticky='w')
+        self.act_recs_m = self.plot3.add_menu(self.act_recs, [])
+        self.act_recs_m.grid(row=0,column=4,sticky='w')
+
+        l = self.plot3.add_label('stimuli', "BW.TLabel",)
+        l.grid(row=0,column=5,sticky='w')
         self.act_stims_m = self.plot3.add_menu(self.act_stims, [])
-        self.act_stims_m.grid(row=0,column=4,sticky='w')
+        self.act_stims_m.grid(row=0,column=6,sticky='w')
 
         l = self.plot3.add_label('trials', "BW.TLabel",)
-        l.grid(row=0,column=5,sticky='w')
-        self.act_trials_m = self.plot3.add_menu(self.act_trials, [])
-        self.act_trials_m.grid(row=0,column=6,sticky='w')
-
-        l = self.plot3.add_label('single trials', "BW.TLabel",)
         l.grid(row=0,column=7,sticky='w')
+        self.act_trials_m = self.plot3.add_menu(self.act_trials, [])
+        self.act_trials_m.grid(row=0,column=8,sticky='w')
+
+        l = self.plot3.add_label('all trials', "BW.TLabel",)
+        l.grid(row=0,column=9,sticky='w')
         self.act_full_m = self.plot3.add_menu(self.act_full, ['None', 'None', 'norm', 'raw'])
-        self.act_full_m.grid(row=0,column=8,sticky='w')
+        self.act_full_m.grid(row=0,column=10,sticky='w')
 
         l = self.plot3.add_checkbutton('group trials', self.act_group,)
-        l.grid(row=0,column=9,sticky='w')
+        l.grid(row=0,column=11,sticky='w')
 
         self.plot3.update()
 
@@ -368,19 +396,25 @@ class GUI:
         pops = self.fov_pops.get()
         bright = self.fov_bright_f.get()
 
-        if pops == 'None':
-            cells = None
-        elif pops == 'all':
-            cells  =self.record.responsive
-        else:
-            cells = self.record.populations[int(pops)]
-
         if bright != 'None': 
             bright = int(bright)
         else:
             bright = None
         
-        img = plot_FOV(rec=self.record,
+        if self.nrecs > 0:
+            rec_id = self.fov_recs.get()
+            rec = self.record.recs[int(rec_id)]
+        else:
+            rec = self.rcord
+
+        if pops == 'None':
+            cells = None
+        elif pops == 'all':
+            cells = rec.responsive
+        else:
+            cells = rec.populations[int(pops)]
+
+        img = plot_FOV(rec=rec,
                        cells_ids=cells,
                        k = bright)
         
@@ -395,12 +429,19 @@ class GUI:
     def plot_act(self):
         
         pop = int(self.act_pop.get())
+        rec_id = self.act_recs.get()
         stimuli = self.act_stims.get()
         trials = self.act_trials.get()
         full = self.act_full.get()
         group = self.act_group.get()
 
-        cells_pop = [self.record.cells[c] for c in self.record.populations[pop]]
+        if rec_id == 'all':
+            rec = self.record
+
+        else:
+            rec = self.record.recs[int(rec_id)]
+        
+        cells_pop = [rec.cells[c] for c in rec.populations[pop]]
 
         if stimuli == 'all':
             stimuli = self.record.sync.stims_names.copy()
@@ -463,6 +504,14 @@ class GUI:
             for arg_name in args:
                 menu_.add_command(label=arg_name, command=tk._setit(var, arg_name))
 
+        if self.nrecs >0:
+            # update recordings
+            recs_id = list(self.record.recs.keys())
+            _update_menu_args(self.fov_recs_m, self.fov_recs, recs_id)
+            recs_id.append('all')
+            _update_menu_args(self.act_recs_m, self.act_recs, recs_id)
+            self.act_recs.set('all')
+
         # update available populations #
         pops = np.arange(len(self.record.populations))
         # pops fov
@@ -483,10 +532,11 @@ class GUI:
 
     def run(self, input):
         
-        nrecs = len(input['data_paths'])
-        if len(input['behavior_paths']) != nrecs:
+        self.nrecs = len(input['data_paths'])
+
+        if len(input['behavior_paths']) != self.nrecs:
             input['behavior_paths'].extend(
-            [None]*(nrecs-len(input)['behavior_paths']))
+            [None]*(self.nrecs-len(input)['behavior_paths']))
             
         loaders = []
 
@@ -498,13 +548,13 @@ class GUI:
             zip(*input.values()):
             
             ld = loader.Dataloader()
-            ld.load_sync(Path(syncpath), Path(stimdictpath), {0:'IPSI',1:'CONTRA',2:'BOTH'})
+            ld.load_sync(Path(syncpath), Path(stimdictpath))
             ld.load_s2p_dir(str(Path(datapath)))
             if behavpath != None:
                 ld.load_behav(Path(behavpath),Path(behavpath).stem)
             loaders.append(ld)
 
-        if nrecs > 1:
+        if self.nrecs > 1:
             print('\n##################################')
             print('##### RUNNING BATCH ANALYSIS #####')
             print('##################################\n')
@@ -521,7 +571,12 @@ class GUI:
         self.record = record
         print('\n##################')
         print('##### DONE ! #####')
-        print('##################\n')  
+        print('##################\n')
+
+        # plot!
+        self.plot_pops()
+        self.plot_fov()
+        self.plot_act()
 
     # def on_resize(self,event):
         
@@ -557,7 +612,11 @@ class GUI:
 
 
 def main():
+    import warnings
+
+    warnings.simplefilter('ignore')
     root = tk.Tk()
+    root.title('Py2Rigs')
     root.configure(background='black')
     gui = GUI(root)
     root.mainloop()
