@@ -13,7 +13,7 @@ from .cell import Cell
 from .plot_stims import *
 from .utils import z_norm, lin_norm, check_len_consistency
 
-warnings.simplefilter('always')
+warnings.simplefilter('ignore')
 
 # TRIALS_C = {
 #    0:  (0.08,0.6,0.3), #"#169b4e",
@@ -568,8 +568,8 @@ def draw_heatmap(
 
     m = np.array(matrix)
 
-    map = sns.diverging_palette(300, 120, s=80, l=80, n=200, as_cmap=True,)
-    #sns.diverging_palette(120, 230, s=60, l=60, n=200, as_cmap=True,)
+    # map = sns.diverging_palette(300, 120, s=80, l=80, n=200, as_cmap=True,)
+    map = sns.diverging_palette(120, 230, s=60, l=60, n=200, as_cmap=True,)
     #sns.diverging_palette(145, 300, s=60, as_cmap=True)
 
 
