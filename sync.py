@@ -103,8 +103,8 @@ class Sync:
                     trial_name = trials_names[trial_type]
 
                 else: 
-                    trial_name = trial_type
-                    trials_names |= {trial_type:trial_type}
+                    trial_name = str(trial_type)
+                    trials_names |= {trial_type:trial_name}
                     
                 sync_ds[stim] |= {
                     trial_name: {
@@ -117,11 +117,9 @@ class Sync:
                 stim_dict[stim].append(trial_name)
 
             for trial_type in sequence:
+                
+                trial_name = trials_names[trial_type]
 
-                if trials_names != None:
-                    trial_name = trials_names[trial_type]
-                else: 
-                    trial_name = trial_type
 
                 sync_ds[stim][trial_name]["trials"].append(
                     (self.sync_tps[i], self.sync_tps[i + 1])

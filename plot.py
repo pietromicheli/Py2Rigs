@@ -37,9 +37,9 @@ TRIALS_C = [
     (0, 0.502, 0.502, 1),          # Teal
     (1, 0.078, 0.576, 1),          # Deep Pink
     (0, 1, 0.271, 1),              # Neon Green
-    (1, 0, 0.502, 1),              # Raspberry
+    (1, 0.2, 0.8, 1),              # Raspberry
     (0.4, 0.804, 0.667, 1),        # Medium Aquamarine
-    (1, 0.647, 0, 1),              # Orange
+    (1, 0.9, 0, 1),              # Orange
     (0, 0.502, 1, 1),              # Royal Blue
     (1, 0.412, 0.706, 1),          # Hot Pink
     (0.251, 0.878, 0.816, 1),      # Turquoise
@@ -1267,7 +1267,7 @@ def plot_heatmaps(
         # plot
         draw_heatmap(resp_all,vmin=vmin,vmax=vmax,cb_label=cb_label,ax=ax)
 
-    fig.suptitle("Population Average - %d ROIs"%len(cells), fontsize=18)
+    fig.suptitle("Population Activity - %d ROIs"%len(cells), fontsize=18)
 
     if save: 
         plt.savefig(r"%s/%s.png"%(save_path,name), bbox_inches="tight")

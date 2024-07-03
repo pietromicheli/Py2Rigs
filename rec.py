@@ -243,7 +243,7 @@ class Rec:
 
         fingerprints = []
 
-        for cell in tqdm(cells_ids):
+        for cell in cells_ids:
 
             average_resp = self.cells[cell].analyzed_trials
 

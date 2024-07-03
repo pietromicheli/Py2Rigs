@@ -3,7 +3,7 @@ from tkinter import ttk
 from tkinter import filedialog
 from functools import partial
 import sys
-import time
+from time import sleep
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from pathlib import Path
@@ -13,6 +13,16 @@ from Py2Rigs import rec, sync, loader, batch
 from Py2Rigs.plot import *
 
 INPUT_LIST = ['data_paths','sync_paths','stimdict_paths','behavior_paths']
+USAGE =  "Welcome :)\n"\
+         "In this GUI you can use Py2Rigs in single rec mode or in batch mode.\n"\
+         "For adding a recording, browse and select:\n"\
+         "- a valid suite2p output directory containing all the suite2p outputs in npy formats;\n"\
+         "- a valid sync file containing the onsets and ofsetts frame of your events or stimuli (.mat or .npy);\n"\
+         "- a valid event dictionary containing the sequence of your events or stimuli (.json);\n"\
+         "- [OPTIONAL] a valid behavioral time siries you want to allign and plot with your data (.npy).\n"\
+         "After adding the required paths, you can add the recording.\n"\
+         "You can add how many recordings you want!\n"\
+         "When you are redy, RUN!!\n"\
 
 class StdoutRedirector:
 
@@ -51,11 +61,11 @@ class InputFrame:
         label = ttk.Label(self.input_frame, text="INPUTS", style='S.TLabel')
         label.grid(row=0, column=0, padx=0,sticky='nw')
         
-        for i,(path_name, path_label) in enumerate(zip(self.INPUT_LIST,["* Data Path:", 
+        for i,(path_name, path_label) in enumerate(zip(self.INPUT_LIST,["* Suite2p output:", 
                                                                    "* Sync File (.mat):", 
                                                                    "* Event Dictionary (.json):", 
                                                                    "  Behavior (.npy):"])):
-            if path_label=='* Data Path:':
+            if path_label=='* Suite2p output:':
                 command = partial(self.browseDir,path_name)
             else:
                 command = partial(self.browseFiles,path_name)
@@ -77,8 +87,12 @@ class InputFrame:
         self.output_frame = ttk.Frame(self.master, style='TFrame')
         self.output_frame.grid(row=0, column=1, columnspan=1, sticky='nsew')
 
-        self.output_text = tk.Text(self.output_frame, wrap="word", bg='black', fg='white', bd=0, width=60, height=10)
+        self.output_text = tk.Text(self.output_frame, wrap="word", bg='black', fg='white', bd=0, width=70, height=15)
         self.output_text.grid(row=0, column=0)
+        
+        # show usage message
+        self.output_text.insert(tk.END, USAGE)
+        self.output_text.see(tk.END)
         
         self.output_text.bind("<MouseWheel>", self.scroll_text)
 
@@ -237,8 +251,8 @@ class GUI:
         self.f1_h = 3
         self.f2_w = 15
         self.f2_h = 5
-        self.f3_w = 15
-        self.f3_h = 3
+        self.f3_w = 5
+        self.f3_h = 9
 
         self.width = 1520
         self.height = 1420
@@ -306,7 +320,7 @@ class GUI:
         self.fov_pops_m = self.plot2.add_menu(self.fov_pops, [])
         self.fov_pops_m.grid(row=0,column=4,sticky='w')
 
-        l = self.plot2.add_label('brighness (int)', "BW.TLabel")
+        l = self.plot2.add_label('brighness', "BW.TLabel")
         l.grid(row=0,column=5,sticky='w')
         self.fov_bright_f = self.plot2.add_entry()
         self.fov_bright_f.insert(0, 'None')
@@ -321,54 +335,66 @@ class GUI:
         self.plot3.plotting_frame.grid(row=2, column=0, pady=10, padx=10, columnspan=3)
         
         self.act_pop = tk.StringVar(value='0')
-        self.act_recs = tk.StringVar(value='0')
+        self.act_recs = tk.StringVar(value='all')
         self.act_stims = tk.StringVar(value='all')
         self.act_trials = tk.StringVar(value='all')
         self.act_full = tk.StringVar(value='None')
         self.act_group = tk.IntVar(value=1)
 
+        self.cell_index = -1
+        self.old_pop = -1
+
+        b_up = self.plot3.add_button('<<', self.change_cell_nxt, "BW.TButton")
+        b_up.grid(row=0, column=0,sticky='e')
         b = self.plot3.add_button('PLOT ACTIVITY', self.plot_act, "BW.TButton",)
-        b.grid(row=0,column=0)
+        b.grid(row=0,column=1)
+        b_down = self.plot3.add_button('>>', self.change_cell_prev, "BW.TButton")
+        b_down.grid(row=0, column=2,sticky='w')
 
         l = self.plot3.add_label('pop', "BW.TLabel")
-        l = l.grid(row=0,column=1,sticky='w')
+        l = l.grid(row=0,column=3,sticky='e')
         self.act_pop_m = self.plot3.add_menu(self.act_pop, [])
-        self.act_pop_m.grid(row=0,column=2,sticky='w')
+        self.act_pop_m.grid(row=0,column=4,sticky='w')
 
         l = self.plot3.add_label('rec', "BW.TLabel",)
-        l.grid(row=0,column=3,sticky='w')
+        l.grid(row=0,column=5,sticky='e')
         self.act_recs_m = self.plot3.add_menu(self.act_recs, [])
-        self.act_recs_m.grid(row=0,column=4,sticky='w')
+        self.act_recs_m.grid(row=0,column=6,sticky='w')
 
         l = self.plot3.add_label('stimuli', "BW.TLabel",)
-        l.grid(row=0,column=5,sticky='w')
+        l.grid(row=0,column=7,sticky='e')
         self.act_stims_m = self.plot3.add_menu(self.act_stims, [])
-        self.act_stims_m.grid(row=0,column=6,sticky='w')
+
+        self.act_stims_m.grid(row=0,column=8,sticky='w')
 
         l = self.plot3.add_label('trials', "BW.TLabel",)
-        l.grid(row=0,column=7,sticky='w')
+        l.grid(row=0,column=9,sticky='e')
         self.act_trials_m = self.plot3.add_menu(self.act_trials, [])
-        self.act_trials_m.grid(row=0,column=8,sticky='w')
+        self.act_trials_m.grid(row=0,column=10,sticky='w')
 
         l = self.plot3.add_label('all trials', "BW.TLabel",)
-        l.grid(row=0,column=9,sticky='w')
+        l.grid(row=0,column=11,sticky='e')
         self.act_full_m = self.plot3.add_menu(self.act_full, ['None', 'None', 'norm', 'raw'])
-        self.act_full_m.grid(row=0,column=10,sticky='w')
+        self.act_full_m.grid(row=0,column=12,sticky='w')
 
         l = self.plot3.add_checkbutton('group trials', self.act_group,)
-        l.grid(row=0,column=11,sticky='w')
+        l.grid(row=0,column=13,sticky='e')
 
         self.plot3.update()
 
         # BIG PLOT 2#
         self.plot4 = PlotSection(master, figsize=(self.f3_w,self.f3_h))
-        self.plot4.plotting_frame.grid(row=3, column=0, pady=1, padx=10, columnspan=3)
+        self.plot4.plotting_frame.grid(row=0, column=3, pady=10, padx=5, rowspan=3, sticky='s')
 
         self.plot4.update()
 
         ### 
         self.root.update()
+
+
         # self.root.bind("<Configure>", self.on_resize)
+        # # Timer to ensure the resize is finished
+        # self.resize_timer = None
 
     def plot_pops(self):
 
@@ -397,15 +423,15 @@ class GUI:
         bright = self.fov_bright_f.get()
 
         if bright != 'None': 
-            bright = int(bright)
+            bright = float(bright)
         else:
             bright = None
         
-        if self.nrecs > 0:
+        if self.nrecs > 1:
             rec_id = self.fov_recs.get()
             rec = self.record.recs[int(rec_id)]
         else:
-            rec = self.rcord
+            rec = self.record
 
         if pops == 'None':
             cells = None
@@ -425,19 +451,40 @@ class GUI:
 
         # rebuild the canvas
         self.plot2.update(fig)
+    
+    def change_cell_nxt(self):
+
+        pop = int(self.act_pop.get())
+        rec_id = self.act_recs.get()
+        if rec_id == 'all':
+            rec = self.record
+        else:
+            rec = self.record.recs[int(rec_id)]
         
-    def plot_act(self):
+        cells_pop = [rec.cells[c] for c in rec.populations[pop]]
+
+        if self.cell_index < len(cells_pop):
+            self.cell_index += 1
+            self.plot_act(avg=False)
+
+    def change_cell_prev(self):
+
+        self.cell_index -= 1
+
+        if self.cell_index >= 0:
+            self.plot_act(avg=False)
+
+    def plot_act(self, avg=True):
         
         pop = int(self.act_pop.get())
         rec_id = self.act_recs.get()
         stimuli = self.act_stims.get()
-        trials = self.act_trials.get()
+        trial = self.act_trials.get()
         full = self.act_full.get()
         group = self.act_group.get()
-
+            
         if rec_id == 'all':
             rec = self.record
-
         else:
             rec = self.record.recs[int(rec_id)]
         
@@ -446,9 +493,9 @@ class GUI:
         if stimuli == 'all':
             stimuli = self.record.sync.stims_names.copy()
         else: stimuli = [stimuli]
-        if trials == 'all':
+        if trial == 'all':
             trials = list(self.record.sync.trials_names.values())
-        else: trials = [trials]
+        else: trials = [trial]
 
         # populate stim dict
         stim_dict = {s:[] for s in stimuli}
@@ -456,11 +503,18 @@ class GUI:
             for t in trials:
                 if t in self.record.sync.stim_dict[s]:
                     stim_dict[s].append(t)
-
+        
         if full == 'None': full = None
 
+        # decide what to plot
+        if avg:
+            cells = cells_pop
+            self.cell_index = -1
+        else:
+            cells = cells_pop[self.cell_index]
+
         # generate plot
-        fig = plot_multipleStim(cells_pop, 
+        fig = plot_multipleStim(cells, 
                                  stim_dict,
                                  plot_stim=True, 
                                  legend=False,
@@ -479,19 +533,26 @@ class GUI:
         self.plot3.update(fig)
 
         # generate heatmaps
-        fig = plot_heatmaps(cells_pop, 
-                            stim_dict,
-                            normalize='zscore',
-                            cbar=False)
+        # check if need to update
+        if pop != self.old_pop:
         
-        fig.set_size_inches(self.f3_w, self.f3_h)
+            fig = plot_heatmaps(cells_pop, 
+                                stim_dict,
+                                normalize='zscore',
+                                vmin=-3,
+                                vmax=3,
+                                cbar=False)
+            
+            fig.set_size_inches(self.f3_w, self.f3_h)
 
-        # resize the fonts
-        for text in fig.findobj(match=plt.Text):
-            text.set_fontsize(7)
+            # resize the fonts
+            for text in fig.findobj(match=plt.Text):
+                text.set_fontsize(7)
 
-        fig.tight_layout()
-        self.plot4.update(fig)
+            fig.tight_layout()
+            self.plot4.update(fig)
+
+            self.old_pop = pop
 
     def update_menu_args(self):
 
@@ -504,7 +565,7 @@ class GUI:
             for arg_name in args:
                 menu_.add_command(label=arg_name, command=tk._setit(var, arg_name))
 
-        if self.nrecs >0:
+        if self.nrecs > 1:
             # update recordings
             recs_id = list(self.record.recs.keys())
             _update_menu_args(self.fov_recs_m, self.fov_recs, recs_id)
@@ -578,37 +639,56 @@ class GUI:
         self.plot_fov()
         self.plot_act()
 
-    # def on_resize(self,event):
+    def on_resize(self, event):
+
+        # Cancel any previously scheduled resize events
+        if self.resize_timer is not None:
+            self.root.after_cancel(self.resize_timer)
         
-    #     # determine the ratio of old width/height to new width/height
-    #     wscale = float(event.width)/self.width
-    #     hscale = float(event.height)/self.height
-    #     if wscale<0.5 or hscale<0.5:
-    #         print(event.width, self.width, event.height, self.height)
+        # Schedule the final resize event
+        self.resize_timer = self.root.after(400, self.final_resize, event)
+    
+    def final_resize(self, event):
+        # Get the new size
+        width = event.width
+        height = event.height
+        print(width, height)
+        # determine the ratio of old width/height to new width/height
+        wscale = float(event.width)/self.width*2
+        hscale = float(event.height)/self.height*2
+        # if wscale<0.5 or hscale<0.5:
             
-    #         # resize the figures 
-    #         self.f1_w = 4*wscale
-    #         self.f1_h = 3*hscale
-    #         self.f2_w = 15*wscale
-    #         self.f2_h = 5*hscale
-    #         self.f3_w = 15*wscale
-    #         self.f3_h = 4*hscale
-    #         fsize = 7*hscale
-            
-    #         for p,s in zip([self.plot1,self.plot2,self.plot3,self.plot4],
-    #                     [(self.f1_w,self.f1_h),(self.f1_w,self.f1_h)
-    #                         ,(self.f2_w,self.f2_h),(self.f3_w,self.f3_h)]):
-    #             fig = p.canvas.figure
-    #             fig.set_size_inches(s[0],s[1])
-    #             # resize the fonts
-    #             for text in fig.findobj(match=plt.Text):
-    #                 text.set_fontsize(fsize)
+        # resize the figures 
+        self.f1_w = 4*wscale
+        self.f1_h = 3*hscale
+        self.f2_w = 15*wscale
+        self.f2_h = 5*hscale
+        self.f3_w = 15*wscale
+        self.f3_h = 4*hscale
+        fsize = 7*hscale
+        
+        for p,s in zip([self.plot1,self.plot2,self.plot3,self.plot4],
+                    [(self.f1_w,self.f1_h),(self.f1_w,self.f1_h)
+                        ,(self.f2_w,self.f2_h),(self.f3_w,self.f3_h)]):
+                        
+            fig = p.canvas.figure
+            fig.set_size_inches(s[0],s[1])
+            print(s[0],s[1])
+            # resize the fonts
+            for text in fig.findobj(match=plt.Text):
+                text.set_fontsize(fsize)
 
-    #             fig.tight_layout()
-    #             p.update(fig)
+            fig.tight_layout()
+            p.update(fig)
+            # p.canvas.draw()
 
-    #         self.root.update()
+        # self.root.update()
 
+        
+
+        
+        
+        
 
 
 def main():
@@ -618,6 +698,7 @@ def main():
     root = tk.Tk()
     root.title('Py2Rigs')
     root.configure(background='black')
+    root.resizable(True, True)
     gui = GUI(root)
     root.mainloop()
 
