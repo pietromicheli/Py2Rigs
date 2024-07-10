@@ -28,7 +28,7 @@ class Dataloader():
         self.sync = sync.Sync().generate_data_structure(sync_file, stim_dict_file, trials_names)
         print("> Sync object generated")
     
-    def load_sync_rf(self, sync_file, texture_file, trial_len):
+    def load_sync_rf(self, sync_file, texture_file, trial_len=20):
         
         self.sync_file = sync_file
         self.texture_file = texture_file

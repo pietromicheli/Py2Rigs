@@ -126,11 +126,17 @@ def z_norm(s):
 
     # if include_zeros:
 
-    if len(s.shape)==1:
+    if s.ndim == 1:
 
         s_mean = np.mean(s)
         s_std = np.std(s)
         zscored =  (s - s_mean) / s_std
+
+        # nz = nonzero(s)
+        # zscored = s.copy()
+        # s_mean = np.mean(s[nz])
+        # s_std = np.std(s[nz])
+        # zscored[nz] = (s[nz] - s_mean) / s_std
     
     else:
         # retrive rows with at least 2 values != 0
@@ -182,7 +188,7 @@ def TSNE_embedding(data=None, **kwargs):
 def k_means(data, n_clusters):
 
     # run Kmeans
-    kmeans = KMeans(n_clusters=n_clusters, init="k-means++", algorithm="auto").fit(data)
+    kmeans = KMeans(n_clusters=n_clusters, init="k-means++").fit(data)
 
     return kmeans.labels_
 

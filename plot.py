@@ -1408,15 +1408,14 @@ def plot_clusters(
     return fig
 
 def plot_receptive_fields(
-        cells,
         texture_dim:tuple,
-        pre_trial:int,
+        cells=[],
+        pre_trial=0,
         avg=True,
         heatmap=False,
         rtype='norm',
-        dataBehav=None,
+        dataBehav={},
         color=(0,0,0),
-        freq=0.5,
         sr = 15.5,
         save_path=None):
 
@@ -1431,146 +1430,144 @@ def plot_receptive_fields(
         number of frames before the trial onset included when extracting each trial response
     - dataBehav: dict
         a pair of {key:value} from a dataBehav_analyzed attribute of a rec obj
-    - freq: int
-        frequency of the sparse noise stim
     - sr: int
         sample rate of the recording
     - save_path: str
         path wehre to save the plots
     """
 
-    if not avg:
+    if cells:
+        if not avg:
 
-        for cell in cells:
+            for cell in cells:
 
-            fig, axs = plt.subplots(texture_dim[0],texture_dim[1],sharex=False,sharey=False)
+                fig, axs = plt.subplots(texture_dim[0],texture_dim[1],sharex=False,sharey=False)
 
-            if 'sparse_noise' not in cell.analyzed_trials:
+                if 'sparse_noise' not in cell.analyzed_trials:
 
-                warnings.warn("No Sparse Noise stim found for cell %s !"%cell.id, RuntimeWarning)
-                continue
+                    warnings.warn("No Sparse Noise stim found for cell %s !"%cell.id, RuntimeWarning)
+                    continue
 
-            ymax = 0
-            ymin = 0
-            for trial in cell.analyzed_trials['sparse_noise']:
-
-                row = int(trial.split(sep='_')[0])
-                col = int(trial.split(sep='_')[1])
-
-                draw_singleStim(axs[row,col], cells, 'sparse_noise', trial, stim_window=False,color=color)
-                
-                axs[row,col].set_xlabel('')
-                axs[row,col].set_ylabel('')
-                axs[row,col].tick_params(axis=u'both', which=u'both',length=0)
-
-                axs[row,col].set_xticks([0,1,2])
-                axs[row,col].set_xticks([0,1,2])
-
-            # plt.setp(axs, ylim=(ymin+(ymin/5),ymax+(ymax/5)))
-            plt.subplots_adjust(wspace=0.04)
-            plt.subplots_adjust(hspace=0.04)
-
-            if save_path != None:
-                plt.savefig(r'%s/%s.png'%(save_path,cell.id))
-
-            # plt.close(fig)
-
-    else:
-
-        fig, axs = plt.subplots(texture_dim[0],texture_dim[1],figsize=(texture_dim[1]*2,texture_dim[0]*2),sharex=True,sharey=True)
-
-        fig.suptitle('population response [df/f] - %d ROIs'%len(cells), fontsize=15)
-
-        responses = np.zeros((texture_dim[0],texture_dim[1],len(cells)))
-        trials = cells[0].analyzed_trials['sparse_noise']
-
-        # vmax = np.max([cell.analyzed_trials['sparse_noise'][trial]["%s_avg"%rtype].max() for  cell in cells for trial in trials])
-        # vmin = np.min([cell.analyzed_trials['sparse_noise'][trial]["%s_avg"%rtype].min() for  cell in cells for trial in trials])
-
-
-        for trial in trials:
-
-            row = int(trial.split(sep='_')[0])
-            col = int(trial.split(sep='_')[1])
-
-            if heatmap:
-                # extract data from each cell
-                resp_all = []
-                for cell in cells:
-
-                    r = cell.analyzed_trials['sparse_noise'][trial]["%s_avg"%rtype]
-                    resp_all.append(r)
-
-                resp_all = check_len_consistency(resp_all)
-                # convert to array
-                resp_all = np.array(resp_all)
-
-                # normalize
-                resp_all = z_norm(resp_all)
-
-                # sort matrix according to quality index
-                qis = [cell.qi for cell in cells]
-                qis_sort = np.argsort(qis)
-                resp_all = resp_all[np.flip(qis_sort)]
-
-                draw_heatmap(resp_all,cbar=False,ax=axs[row,col])   
-                axs[row,col].axvline(cell.analyzed_trials['sparse_noise'][trial]['window'][0],0,color='r',linestyle='--',alpha=0.8) 
-                axs[row,col].axvline(cell.analyzed_trials['sparse_noise'][trial]['window'][1],0,color='r',linestyle='--',alpha=0.8) 
-
-            else:
-                draw_singleStim(axs[row,col], cells, 'sparse_noise', trial, stim_window=False, color=color)
-           
-            axs[row,col].set_xlabel('')
-            axs[row,col].set_ylabel('')
-            axs[row,col].tick_params(axis=u'both', which=u'both',length=0)
-
-            axs[row,col].set_xticks([0,1,2])
-            axs[row,col].set_xticks([0,1,2])
-        
-            plt.subplots_adjust(wspace=0.04)
-            plt.subplots_adjust(hspace=0.04)
-        
-        if save_path != None:
-            plt.savefig(r'%s.png'%(save_path), transparent=True)
-
-        # plt.close(fig)
-
-        # plot also dataBehav if desired
-        if dataBehav != None:
-
-            fig, axs = plt.subplots(texture_dim[0],texture_dim[1],figsize=(texture_dim[1]*2,texture_dim[0]*2),sharex=True,sharey=True)
-
-            title = ''
-            for db in dataBehav.keys(): title+='%s  '%(str(db))
-            
-            fig.suptitle(title+'   [zscore]', fontsize=15)
-
-            for (name,data),color in zip(dataBehav.items(),[[0.,0.,0.],[0.8,0.1,0.1]]):
-
-                responses = np.zeros((texture_dim[0],texture_dim[1],len(cells)))
-                trials = data['sparse_noise']
-                
-                for trial in trials:
+                ymax = 0
+                ymin = 0
+                for trial in cell.analyzed_trials['sparse_noise']:
 
                     row = int(trial.split(sep='_')[0])
                     col = int(trial.split(sep='_')[1])
-            
-                    draw_singleStim_dataBehav(axs[row,col], {name:data}, 'sparse_noise', trial, rtype='norm', color=np.array(color), stim_window=False)
+
+                    draw_singleStim(axs[row,col], cells, 'sparse_noise', trial, stim_window=False,color=color)
+                    
                     axs[row,col].set_xlabel('')
                     axs[row,col].set_ylabel('')
                     axs[row,col].tick_params(axis=u'both', which=u'both',length=0)
 
                     axs[row,col].set_xticks([0,1,2])
                     axs[row,col].set_xticks([0,1,2])
-                
-                    plt.subplots_adjust(wspace=0.04)
-                    plt.subplots_adjust(hspace=0.04)
+
+                # plt.setp(axs, ylim=(ymin+(ymin/5),ymax+(ymax/5)))
+                plt.subplots_adjust(wspace=0.04)
+                plt.subplots_adjust(hspace=0.04)
+
+                if save_path != None:
+                    plt.savefig(r'%s/%s.png'%(save_path,cell.id))
+
+                # plt.close(fig)
+
+        else:
+
+            fig, axs = plt.subplots(texture_dim[0],texture_dim[1],figsize=(texture_dim[1]*2,texture_dim[0]*2),sharex=True,sharey=True)
+
+            fig.suptitle('population response [df/f] - %d ROIs'%len(cells), fontsize=15)
+
+            responses = np.zeros((texture_dim[0],texture_dim[1],len(cells)))
+            trials = cells[0].analyzed_trials['sparse_noise']
+
+            # vmax = np.max([cell.analyzed_trials['sparse_noise'][trial]["%s_avg"%rtype].max() for  cell in cells for trial in trials])
+            # vmin = np.min([cell.analyzed_trials['sparse_noise'][trial]["%s_avg"%rtype].min() for  cell in cells for trial in trials])
+
+
+            for trial in trials:
+
+                row = int(trial.split(sep='_')[0])
+                col = int(trial.split(sep='_')[1])
+
+                if heatmap:
+                    # extract data from each cell
+                    resp_all = []
+                    for cell in cells:
+
+                        r = cell.analyzed_trials['sparse_noise'][trial]["%s_avg"%rtype]
+                        resp_all.append(r)
+
+                    resp_all = check_len_consistency(resp_all)
+                    # convert to array
+                    resp_all = np.array(resp_all)
+
+                    # normalize
+                    resp_all = z_norm(resp_all)
+
+                    # sort matrix according to quality index
+                    qis = [cell.qi for cell in cells]
+                    qis_sort = np.argsort(qis)
+                    resp_all = resp_all[np.flip(qis_sort)]
+
+                    draw_heatmap(resp_all,cbar=False,ax=axs[row,col])   
+                    axs[row,col].axvline(cell.analyzed_trials['sparse_noise'][trial]['window'][0],0,color='r',linestyle='--',alpha=0.8) 
+                    axs[row,col].axvline(cell.analyzed_trials['sparse_noise'][trial]['window'][1],0,color='r',linestyle='--',alpha=0.8) 
+
+                else:
+                    draw_singleStim(axs[row,col], cells, 'sparse_noise', trial, stim_window=False, color=color)
+            
+                axs[row,col].set_xlabel('')
+                axs[row,col].set_ylabel('')
+                axs[row,col].tick_params(axis=u'both', which=u'both',length=0)
+
+                axs[row,col].set_xticks([0,1,2])
+                axs[row,col].set_xticks([0,1,2])
+            
+                plt.subplots_adjust(wspace=0.04)
+                plt.subplots_adjust(hspace=0.04)
             
             if save_path != None:
-                    plt.savefig('%s_%s.png'%(save_path,title), transparent=True)
+                plt.savefig(r'%s.png'%(save_path), transparent=True)
 
             # plt.close(fig)
-             
+
+    # plot also dataBehav if desired
+    if dataBehav:
+
+        fig, axs = plt.subplots(texture_dim[0],texture_dim[1],figsize=(texture_dim[1]*2,texture_dim[0]*2),sharex=True,sharey=True)
+
+        title = ''
+        for db in dataBehav.keys(): title+='%s  '%(str(db))
+        
+        fig.suptitle(title, fontsize=15)
+
+        for (name,data),color in zip(dataBehav.items(),[[0.,0.,0.],[0.8,0.1,0.1]]):
+
+            trials = data['sparse_noise']
+            
+            for trial in trials:
+
+                row = int(trial.split(sep='_')[0])
+                col = int(trial.split(sep='_')[1])
+        
+                draw_singleStim_dataBehav(axs[row,col], {name:data}, 'sparse_noise', trial, rtype='norm', color=np.array(color), stim_window=False)
+                axs[row,col].set_xlabel('')
+                axs[row,col].set_ylabel('')
+                axs[row,col].tick_params(axis=u'both', which=u'both',length=0)
+
+                axs[row,col].set_xticks([0,1,2])
+                axs[row,col].set_xticks([0,1,2])
+            
+                plt.subplots_adjust(wspace=0.04)
+                plt.subplots_adjust(hspace=0.04)
+        
+        if save_path != None:
+                plt.savefig('%s_%s.png'%(save_path,title), transparent=True)
+
+        # plt.close(fig)
+            
 def plot_histogram(
     values:dict, 
     xlabel='',

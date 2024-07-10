@@ -212,6 +212,7 @@ class Rec:
         cells_ids=None,
         stim_trials_dict=None, 
         rtype="norm", 
+        mode="full",
         normalize="zscore", 
         smooth=True):
 
@@ -226,6 +227,8 @@ class Rec:
             stim name and [t1,...,tn] is a list of valid trials for that stim.
         - rtype: str
             whether to use normalized or raw responses. Can be either 'norm' or 'raw'
+        - mode: str
+            can be full (concatenate the full responses to trials) or median (concatenate the media of responses to trials) 
 
         """
 
@@ -272,15 +275,24 @@ class Rec:
                         # low-pass filter
                         r = filter(r, 0.1)
 
-                    concat_stims = np.concatenate((concat_stims, r))
+                    if mode == 'full':
+                        concat_stims = np.concatenate((concat_stims, r))
 
-            if normalize == "linear":
+                    elif mode == 'median':
+                        r = np.median(r)
+                        concat_stims.append(r)              
 
-                concat_stims = lin_norm(concat_stims, -1, 1)
+            concat_stims = np.array(concat_stims)
+            
+            if mode != 'median':
 
-            elif normalize == "zscore":
+                if normalize == "linear":
 
-                concat_stims = z_norm(concat_stims)
+                    concat_stims = lin_norm(concat_stims, -1, 1)
+
+                elif normalize == "zscore":
+
+                    concat_stims = z_norm(concat_stims)
 
             fingerprints.append(concat_stims)
 
@@ -446,7 +458,8 @@ class Rec:
         stims, 
         trials_types, 
         ntrials, 
-        include_baselines=False,
+        median=False,
+        include_peri_act=False,
         get_shuffle=False):
 
         ntrials_types = len(stims)*len(trials_types)
@@ -460,7 +473,7 @@ class Rec:
                     trial = []
                     for c in cells:
                         t = c.analyzed_trials[stim][ttype]['trials_norm'][tix][:]
-                        if not include_baselines:
+                        if not include_peri_act:
                             s,e = c.analyzed_trials[stim][ttype]['window']
                             t = t[s:e]
                     
@@ -473,6 +486,9 @@ class Rec:
                 psths.append(trials)
 
         psths = np.array(psths)
+        if median:
+            psths = np.median(psths,axis=-1)[:,:,:,np.newaxis]
+
         print(psths.shape)
 
         # concatenate trial types
@@ -649,7 +665,6 @@ class Rec:
                         trials_raw.append(d_trial)
                         trials_norm.append(d_trial_norm)
 
-
                     # COMPUTE STATISTICS #
                     trials_raw = np.array(trials_raw)
                     trials_norm = np.array(trials_norm)
@@ -791,6 +806,7 @@ class Rec:
                     # COMPUTE STATISTICS #
                     trials_raw = np.array(trials_raw)
                     trials_norm = np.array(trials_norm)
+                    
 
                     if trials_raw.shape[0] > 1:
                         trials_raw_avg = np.mean(trials_raw, axis=0)
@@ -815,7 +831,7 @@ class Rec:
                             qis.append(compute_QI(zscored, (int(self.params['pre_trial']*self.sf),-1)))
                         else:
                             # calculate responsiveness based on zscore
-                            qis.append(np.abs(z_norm(trials_norm[:,cix,:])).max())
+                            qis.append(np.abs(z_norm(trials_norm_avg[cix,:])).max())
 
                     best_qis = np.where(np.greater(qis,best_qis), qis, best_qis)
 
@@ -835,30 +851,28 @@ class Rec:
                                     "trials_raw": trials_raw[:,i,:],
                                     "norm_avg": trials_norm_avg[i],
                                     "norm_std": trials_norm_std[i],
-                                    "QI": qis[i],
+                                    "qi": qis[i],
                                     "window": (on, off),
                                 }
                             }
                         c.norm = self.dataNorm[i]
                         c.raw = self.dataRaw[i]
-
     
             # store all the cells in a dictionary with id:cell items
             self.cells = {idx:cell for idx,cell in enumerate(cells)}
 
-            # asses responsiveness fro each cell
+            # asses responsiveness for each cell
             for i,c in list(self.cells.items()): 
-                
+
                 if best_qis[i] != 0:
                     c.qi = best_qis[i]
                     c.is_responsive()
 
-                else:
-
-                    # if was impossible to compute QI because the data contain only
-                    # a single trial for every stimulus, assume is responsive
-                    c.qi = None
-                    c.responsive = True 
+                # else:
+                #     # if was impossible to compute QI because the data contain only
+                #     # a single trial for every stimulus, assume is responsive
+                #     c.qi = None
+                #     c.responsive = True 
 
                 if not (keep_unresponsive or c.responsive):
 
