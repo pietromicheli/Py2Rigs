@@ -40,7 +40,7 @@ class InputFrame:
 
     INPUT_LIST = ['data_paths','sync_paths','stimdict_paths','behavior_paths']
 
-    def __init__(self, master, run_command):
+    def __init__(self, master, run_command, scaleup_command, scaledown_command):
 
         ttk.Style().configure('TFrame', background='black')
         ttk.Style().configure("BW.TLabel", foreground="white", background="black", font=("Arial", 10))
@@ -50,6 +50,8 @@ class InputFrame:
 
         self.master = master
         self.run_command = run_command
+        self.scaleup = scaleup_command
+        self.scaledown = scaledown_command
         self.init_loc = '/'
 
         # input section
@@ -59,36 +61,43 @@ class InputFrame:
 
         self.input_frame = ttk.Frame(self.master, style='TFrame')
         label = ttk.Label(self.input_frame, text="INPUTS", style='S.TLabel')
-        label.grid(row=0, column=0, padx=0,sticky='nw')
+        label.grid(row=0, column=0, pady=10,sticky='nw')
+
+        # rescale widget
+        # label = ttk.Label(self.input_frame, text="Rescale window", style='BW.TLabel')
+        # label.grid(row=0, column=1, pady=20,sticky='e')
+        # scaleup_b = ttk.Button(self.input_frame, text="+", style='S.TButton', command=self.scaleup)
+        # scaleup_b.grid(row=0, column=2, pady=20,sticky='e')
+        # scaledown_b = ttk.Button(self.input_frame, text="-", style='S.TButton', command=self.scaledown)
+        # scaledown_b.grid(row=0, column=3, pady=20,sticky='w')
         
         for i,(path_name, path_label) in enumerate(zip(self.INPUT_LIST,["* Suite2p output:", 
                                                                    "* Sync File (.mat):", 
                                                                    "* Event Dictionary (.json):", 
-                                                                   "  Behavior (.npy):"])):
+                                                                   "  Behavior (.npy):"]),1):
             if path_label=='* Suite2p output:':
                 command = partial(self.browseDir,path_name)
             else:
                 command = partial(self.browseFiles,path_name)
 
             label = ttk.Label(self.input_frame, text=path_label, style='BW.TLabel')
-            label.grid(row=i+1, column=0, padx=0, sticky="nsew")
+            label.grid(row=i, column=0, padx=0, sticky="e")
             entry = ttk.Button(self.input_frame, text='browse ...', command=command)
-            entry.grid(row=i+1, column=1, pady=5, padx=5, sticky='nsew')
+            entry.grid(row=i, column=1, pady=5, padx=5, sticky='e')
         
         b1 = ttk.Button(self.input_frame, text="Add Recording", style='BW.TButton', command=lambda path=path_name: self.add_paths())
-        b1.grid(row=2, column=2, padx=3, pady=5, sticky='nsew')
+        b1.grid(row=2, column=2, padx=3, pady=5, sticky='nswe')
         b2 = ttk.Button(self.input_frame, text="CLEAR", style='BW.TButton', command=self.clear)
-        b2.grid(row=3, column=2, pady=5, padx=3, sticky='nsew')
-
+        b2.grid(row=3, column=2, pady=5, padx=3, sticky='nswe')
         b3 = ttk.Button(self.input_frame, text="RUN", style='BW.TButton', command=self.run_callback)
-        b3.grid(row=4, column=2, columnspan=1, padx=3, pady=5, sticky='nsew')
+        b3.grid(row=4, column=2, columnspan=1, padx=3, pady=5, sticky='nswe')
         
         # Standard Output Window
         self.output_frame = ttk.Frame(self.master, style='TFrame')
         self.output_frame.grid(row=0, column=1, columnspan=1, sticky='nsew')
 
         self.output_text = tk.Text(self.output_frame, wrap="word", bg='black', fg='white', bd=0, width=70, height=15)
-        self.output_text.grid(row=0, column=0)
+        self.output_text.grid(row=0, column=0, pady=20)
         
         # show usage message
         self.output_text.insert(tk.END, USAGE)
@@ -172,7 +181,8 @@ class PlotSection:
         self.plotting_frame.grid(row=0, column=0, sticky="nsew")
 
         self.canvas = self.add_canvas(self.figsize)
-        self.canvas.get_tk_widget().grid(row=1,column=0,columnspan=self.cspan)
+        self.cwidg = self.canvas.get_tk_widget()
+        self.cwidg.grid(row=1,column=0,columnspan=self.cspan)
         self.canvas.draw()
 
         self.tb_fr = ttk.Frame(self.master, style='TFrame')
@@ -225,13 +235,22 @@ class PlotSection:
         tb.update()
         return tf, tb
     
-    def update(self, fig=None):
+    def update(self, fig=None, fsize=None, psize=None):
+
+        if psize != None:
+            self.cwidg.configure(width=psize[0], height=psize[1])
 
         if fig == None:
             fig = plt.Figure(figsize=self.figsize)
-        
+
+        if fsize != None:
+            fig.set_size_inches(fsize[0],fsize[1])
+
+        fig.tight_layout()
         self.canvas.figure = fig
-        self.canvas.get_tk_widget().grid(row=1, column=0, columnspan=self.cspan)
+
+        self.cwidg.grid(row=1, column=0, columnspan=self.cspan)
+        
         self.canvas.draw()
 
         if hasattr(self, 'tb_fr'):
@@ -247,16 +266,28 @@ class GUI:
     def __init__(self, root):
 
         self.root = root
-        self.f1_w = 4
-        self.f1_h = 3
-        self.f2_w = 15
-        self.f2_h = 5
-        self.f3_w = 5
-        self.f3_h = 9
+        self.width = root.winfo_screenwidth()*0.7
+        self.height = root.winfo_screenheight()*0.65
 
-        self.width = 1520
-        self.height = 1420
-        # root.geometry("900X1200")
+        # self.f1_w_orig = self.f1_w = 4.8
+        # self.f1_h_orig = self.f1_h = 3.6
+        # self.f2_w_orig = self.f2_w = 4.8
+        # self.f2_h_orig = self.f2_h = 3.6
+        # self.f3_w_orig = self.f3_w = 18
+        # self.f3_h_orig = self.f3_h = 6
+        # self.f4_w_orig = self.f4_w = 6
+        # self.f4_h_orig = self.f4_h = 11.2
+
+        self.f1_w_orig = self.f1_w =  self.width*0.27/100
+        self.f1_h_orig = self.f1_h = self.height*0.35/100
+        self.f2_w_orig = self.f2_w =  self.width*0.25/100
+        self.f2_h_orig = self.f2_h = self.height*0.35/100
+        self.f3_w_orig = self.f3_w =  self.width*0.85/100
+        self.f3_h_orig = self.f3_h = self.height*0.7/100
+        self.f4_w_orig = self.f4_w =  self.width*0.3/100
+        self.f4_h_orig = self.f4_h = self.height*1.22/100
+
+        self.scale = 1
 
         master = ttk.Frame(root)
         master.grid(row=0, column=0, sticky='nsew')
@@ -264,14 +295,14 @@ class GUI:
         self.record = None
 
         # TOP SECTION #
-        self.first_section = InputFrame(master, self.run)
+        self.first_section = InputFrame(master, self.run, self.scaleup, self.scaledown)
         self.first_section.input_frame.grid(row=0, column=0, sticky='nsew')
         self.first_section.output_frame.grid(row=1, column=0, columnspan=1, sticky='nsew')
 
         ###
 
         # FRST PLOT #
-        self.plot1 = PlotSection(master, figsize=(self.f1_w,self.f1_h))
+        self.plot1 = PlotSection(master, figsize=(self.f1_w_orig,self.f1_h_orig))
         self.plot1.plotting_frame.grid(row=0, column=1, rowspan=2, pady=10, padx=10, sticky='nsew')
         
         self.pops_embed = tk.StringVar(value='pca')
@@ -301,7 +332,7 @@ class GUI:
         ###
 
         # SECOND PLOT #
-        self.plot2 = PlotSection(master, figsize=(self.f1_w,self.f1_h))
+        self.plot2 = PlotSection(master, figsize=(self.f2_w_orig,self.f2_h_orig))
         self.plot2.plotting_frame.grid(row=0, column=2, rowspan=2, pady=10, padx=10, sticky='nsew')
         
         self.fov_pops = tk.StringVar(value='all')
@@ -331,7 +362,7 @@ class GUI:
         ###
 
         # BIG PLOT 1#
-        self.plot3 = PlotSection(master, figsize=(self.f2_w,self.f2_h))
+        self.plot3 = PlotSection(master, figsize=(self.f3_w_orig,self.f3_h_orig))
         self.plot3.plotting_frame.grid(row=2, column=0, pady=10, padx=10, columnspan=3)
         
         self.act_pop = tk.StringVar(value='0')
@@ -344,11 +375,11 @@ class GUI:
         self.cell_index = -1
         self.old_pop = -1
 
-        b_up = self.plot3.add_button('<<', self.change_cell_nxt, "BW.TButton")
+        b_up = self.plot3.add_button('<<', self.change_cell_prev, "BW.TButton")
         b_up.grid(row=0, column=0,sticky='e')
         b = self.plot3.add_button('PLOT ACTIVITY', self.plot_act, "BW.TButton",)
         b.grid(row=0,column=1)
-        b_down = self.plot3.add_button('>>', self.change_cell_prev, "BW.TButton")
+        b_down = self.plot3.add_button('>>', self.change_cell_nxt, "BW.TButton")
         b_down.grid(row=0, column=2,sticky='w')
 
         l = self.plot3.add_label('pop', "BW.TLabel")
@@ -383,10 +414,24 @@ class GUI:
         self.plot3.update()
 
         # BIG PLOT 2#
-        self.plot4 = PlotSection(master, figsize=(self.f3_w,self.f3_h))
+        self.plot4 = PlotSection(master, figsize=(self.f4_w_orig,self.f4_h_orig))
         self.plot4.plotting_frame.grid(row=0, column=3, pady=10, padx=5, rowspan=3, sticky='s')
 
         self.plot4.update()
+
+        # get plot canvas sizes 
+        self.p1_w_orig = self.plot1.cwidg.winfo_reqwidth()
+        self.p1_h_orig = self.plot1.cwidg.winfo_reqheight()
+        self.p2_w_orig = self.plot2.cwidg.winfo_reqwidth()
+        self.p2_h_orig = self.plot2.cwidg.winfo_reqheight()
+        self.p3_w_orig = self.plot3.cwidg.winfo_reqwidth()
+        self.p3_h_orig = self.plot3.cwidg.winfo_reqheight()
+        self.p4_w_orig = self.plot4.cwidg.winfo_reqwidth()
+        self.p4_h_orig = self.plot4.cwidg.winfo_reqheight()
+
+        # get inch to pixel conversion 
+        wp = self.plot1.cwidg.winfo_reqwidth()
+        self.conv_ratio = wp / self.plot1.canvas.figure.get_figwidth()
 
         ### 
         self.root.update()
@@ -444,7 +489,7 @@ class GUI:
                        cells_ids=cells,
                        k = bright)
         
-        fig, ax = plt.subplots(1,1, figsize=(self.f1_w, self.f1_h))
+        fig, ax = plt.subplots(1,1, figsize=(self.f2_w, self.f2_h))
         ax.imshow(img, aspect='auto')
         ax.axis("off")
         fig.tight_layout()
@@ -523,7 +568,7 @@ class GUI:
                                  full=full,
                                  dataBehav=self.record.dataBehav_analyzed)
         
-        fig.set_size_inches(self.f2_w, self.f2_h)
+        fig.set_size_inches(self.f3_w, self.f3_h)
 
         # resize the fonts
         for text in fig.findobj(match=plt.Text):
@@ -543,7 +588,7 @@ class GUI:
                                 vmax=3,
                                 cbar=False)
             
-            fig.set_size_inches(self.f3_w, self.f3_h)
+            fig.set_size_inches(self.f4_w, self.f4_h)
 
             # resize the fonts
             for text in fig.findobj(match=plt.Text):
@@ -639,50 +684,100 @@ class GUI:
         self.plot_fov()
         self.plot_act()
 
-    def on_resize(self, event):
+    def scaleup(self):
 
-        # Cancel any previously scheduled resize events
-        if self.resize_timer is not None:
-            self.root.after_cancel(self.resize_timer)
+        self.scale += 0.1
+        # self.resize_plots()
+
+    def scaledown(self):
+
+        if self.scale > 0.1:
+            self.scale -= 0.1
+
+            # for frame in self.master.winfo_children():
+            #     for widget in frame.winfo_children():
+            #         if isinstance(widget, ttk.Label):     
+            #             print(type(widget),widget['font'])
+            #             fsize = int(10*self.scale)
+            #             widget['font'] = (None, fsize)
+
+            # self.resize_plots()
+
+    # def resize_plots(self):
+
+    #     self.f1_w =  self.f1_w_orig*self.scale
+    #     self.f1_h =  self.f1_h_orig*self.scale
+    #     self.f2_w =  self.f2_w_orig*self.scale
+    #     self.f2_h =  self.f2_h_orig*self.scale
+    #     self.f3_w =  self.f3_w_orig*self.scale
+    #     self.f3_h =  self.f3_h_orig*self.scale
+    #     self.f4_w =  self.f4_w_orig*self.scale
+    #     self.f4_h =  self.f4_h_orig*self.scale
+    #     fsize = 7*self.scale
+
+    #     self.p1_w = self.f1_w*self.conv_ratio
+    #     self.p1_h = self.f1_h*self.conv_ratio
+    #     self.p2_w = self.f2_w*self.conv_ratio
+    #     self.p2_h = self.f2_h*self.conv_ratio
+    #     self.p3_w = self.f3_w*self.conv_ratio
+    #     self.p3_h = self.f3_h*self.conv_ratio
+    #     self.p4_w = self.f4_w*self.conv_ratio
+    #     self.p4_h = self.f4_h*self.conv_ratio
+
+    #     for p,fsize, psize in zip([self.plot1,self.plot2,self.plot3,self.plot4],
+    #                             [(self.f1_w,self.f1_h),(self.f2_w,self.f2_h),
+    #                              (self.f3_w,self.f3_h),(self.f4_w,self.f4_h)],
+    #                             [(self.p1_w,self.p1_h),(self.p2_w,self.p2_h),
+    #                             (self.p3_w,self.p3_h),(self.p4_w,self.p4_h)]):
+    #         fig = p.canvas.figure
+    #         p.update(fig, fsize=fsize, psize=psize)
+
+    #     self.root.update()
+
+    # def on_resize(self, event):
+
+    #     # Cancel any previously scheduled resize events
+    #     if self.resize_timer is not None:
+    #         self.root.after_cancel(self.resize_timer)
         
-        # Schedule the final resize event
-        self.resize_timer = self.root.after(400, self.final_resize, event)
+    #     # Schedule the final resize event
+    #     self.resize_timer = self.root.after(400, self.final_resize, event)
     
-    def final_resize(self, event):
-        # Get the new size
-        width = event.width
-        height = event.height
-        print(width, height)
-        # determine the ratio of old width/height to new width/height
-        wscale = float(event.width)/self.width*2
-        hscale = float(event.height)/self.height*2
-        # if wscale<0.5 or hscale<0.5:
+    # def final_resize(self, event):
+    #     # Get the new size
+    #     width = event.width
+    #     height = event.height
+    #     print(width, height)
+    #     # determine the ratio of old width/height to new width/height
+    #     wscale = float(event.width)/self.width*2
+    #     hscale = float(event.height)/self.height*2
+    #     # if wscale<0.5 or hscale<0.5:
             
-        # resize the figures 
-        self.f1_w = 4*wscale
-        self.f1_h = 3*hscale
-        self.f2_w = 15*wscale
-        self.f2_h = 5*hscale
-        self.f3_w = 15*wscale
-        self.f3_h = 4*hscale
-        fsize = 7*hscale
+    #     # resize the figures 
+    #     self.f1_w = 4*wscale
+    #     self.f1_h = 3*hscale
+    #     self.f2_w = 15*wscale
+    #     self.f2_h = 5*hscale
+    #     self.f3_w = 15*wscale
+    #     self.f3_h = 4*hscale
+    #     fsize = 7*hscale
         
-        for p,s in zip([self.plot1,self.plot2,self.plot3,self.plot4],
-                    [(self.f1_w,self.f1_h),(self.f1_w,self.f1_h)
-                        ,(self.f2_w,self.f2_h),(self.f3_w,self.f3_h)]):
+    #     for p,s in zip([self.plot1,self.plot2,self.plot3,self.plot4],
+    #                 [(self.f1_w,self.f1_h),(self.f1_w,self.f1_h)
+    #                     ,(self.f2_w,self.f2_h),(self.f3_w,self.f3_h)]):
                         
-            fig = p.canvas.figure
-            fig.set_size_inches(s[0],s[1])
-            print(s[0],s[1])
-            # resize the fonts
-            for text in fig.findobj(match=plt.Text):
-                text.set_fontsize(fsize)
+    #         fig = p.canvas.figure
+    #         fig.set_size_inches(s[0],s[1])
+    #         print(s[0],s[1])
+    #         # resize the fonts
+    #         for text in fig.findobj(match=plt.Text):
+    #             text.set_fontsize(fsize)
 
-            fig.tight_layout()
-            p.update(fig)
-            # p.canvas.draw()
+    #         fig.tight_layout()
+    #         p.update(fig)
+    #         # p.canvas.draw()
 
-        # self.root.update()
+    #     # self.root.update()
 
         
 

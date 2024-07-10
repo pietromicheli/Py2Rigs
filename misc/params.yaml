@@ -28,15 +28,18 @@
   baseline_indices : null
 
   # critical frequency (normalized) of the lowpass filter used for smoothing the data. 
-  lowpass_wn : 0.4
+  lowpass_wn : 0.3
+
+  # zscore threshold for preliminar screening of responsive cells
+  zthreshold : 3
 
   # Type of metrics used for quantifying responsiveness. 
   # 0: var(mean)/mean(var) 
-  # 1: ttest on pre vs post stimulus activity
+  # 1: Threshold on max z-score
   qi_metrics : 0
 
-  # quality index threshold above which an roi is considered responsive (only used if q_metrics is set to 1)
-  qi_threshold : 0.4
+  # quality index threshold above which an roi is considered responsive
+  qi_threshold : 0.45
 
   # wether to keep only the cells that passed the suite2p classifier
   use_iscell: 0
@@ -47,8 +50,8 @@
   # criteria to use for assesing overall responsiveness of cells:
   # 0: the cell is responsive if it significatively respond to at least one stimulation condition
   # 1: the cell is responsive if it significatively respond to all the stimulation condition
-  resp_criteria : 1
+  resp_criteria : 0
     
   # Only gor fluo data: constant by which to scale the neuropil signal before subtracting it
   # to the raw fluoressence signal
-  neuropil_corr : 0.9
+  neuropil_corr : 0.8
