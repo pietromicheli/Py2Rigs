@@ -61,6 +61,17 @@ class Cell:
         Asses responsiveness according to the QI value and the criteria specified in params
         """
 
+        # first, check if passes minimal threshold on zscore
+        if z_norm(self.rec.dataNorm[self.id]).max() < self.rec.params['zthreshold']:
+            self.responsive = False
+            return self.responsive
+
+        # use _iscell?
+        if self.rec.params['use_iscell']:
+            if not self.rec.loader.iscell[self.id][1] >= 0.7: # use 0.7 as prob threshold
+                self.responsive = False
+                return self.responsive
+
         if self.params["resp_criteria"] == 1:
         
             qis_stims = []
@@ -71,25 +82,23 @@ class Cell:
 
                 for trial_name in self.analyzed_trials[stim]:
 
-                    qis_trials.append(self.analyzed_trials[stim][trial_name]["QI"])
+                    qis_trials.append(self.analyzed_trials[stim][trial_name]["qi"])
 
                 # for each stimulus, consider only the highest QI calculated
                 # over all the different trial types (i.e. Ipsi, Both, Contra)
                 qis_stims.append(max(qis_trials))
 
-            if self.params["qi_metrics"]==0:
-                responsive = all([qi >= self.params["qi_threshold"] for qi in qis_stims])
-
-            else:
-                responsive = all([qi <= 0.05 for qi in qis_stims])
+            # if self.params["qi_metrics"]==0:
+            # QI from Baden et al.
+            # OR threshold max z-scored activity
+            responsive = all([qi >= self.params["qi_threshold"] for qi in qis_stims])
 
         else:
 
-            if self.params["qi_metrics"]==0:
-                responsive = (self.qi >= self.params["qi_threshold"])
-
-            else:
-                responsive = (self.qi <= 0.05)
+            # if self.params["qi_metrics"]==0:
+            # QI from Baden et al.
+            # OR threshold max z-scored activity
+            responsive = (self.qi >= self.params["qi_threshold"])
 
 
         self.responsive = responsive
