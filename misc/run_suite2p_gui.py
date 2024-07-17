@@ -68,21 +68,21 @@ swidth = app.winfo_screenwidth()
 sheight = app.winfo_screenheight()
 
 app.configure(bg='black')
-app.geometry("%dx%d"%(int(swidth/4),int(sheight/3)))
+app.geometry("%dx%d"%(int(swidth/3),int(sheight/2)))
 app.title("SUITE2P BATCH")
 
 button_h = 30
-sbar = 20
-button_w = (int(swidth/4)-sbar)/5
+sbar = 0
+button_w = (int(swidth/3))/5
 
 
 out = tk.Text(app, wrap="none", bg='black', fg='green1')
-out.place(x=0,y=button_h, width=int(swidth/4)-2*sbar, height=int(sheight/3)-3*sbar-button_h)
+out.place(x=0,y=button_h, width=int(swidth/3)-2*sbar, height=int(sheight/2)-2*sbar-button_h)
 outVsb = tk.Scrollbar(app, orient="vertical", command=out.yview)
 outHsb = tk.Scrollbar(app, orient="horizontal", command=out.xview)
 out.configure(yscrollcommand=outVsb.set, xscrollcommand=outHsb.set)
-outVsb.place(x=int(swidth/4)-2*sbar,y=button_h, width=sbar, height=int(sheight/3)-3*sbar-button_h)
-outHsb.place(x=0,y=int(sheight/3)-3*sbar, width=int(swidth/4)-sbar, height=sbar)
+outVsb.place(x=int(swidth/3)-2*sbar,y=button_h, width=sbar, height=int(sheight/2)-2*sbar-button_h)
+outHsb.place(x=0,y=int(sheight/2)-20, width=int(swidth/3), height=20)
 
 sys.stdout = StdoutRedirector(out)
 sys.stderr = StdoutRedirector(out)
@@ -93,29 +93,29 @@ data_folder_paths = []
 save_folder_paths = []
 
 
-data_dirs = tk.Button(app, text='Data folders*', command=select_data_folders)
+data_dirs = tk.Button(app, text='Data folders*', foreground="black", borderwidth=3, background="grey", font=("Arial", 12),command=select_data_folders)
 data_dirs.place(x=0,y=0, width=button_w, height=button_h)
-data_dirs.configure(bg='purple2')
+# data_dirs.configure(bg='purple2')
 
-save_dirs = tk.Button(app, text='Save folders', command=select_save_folders)
+save_dirs = tk.Button(app, text='Save folders', foreground="black", borderwidth=3, background="grey", font=("Arial", 12),command=select_save_folders)
 save_dirs.place(x=button_w,y=0, width=button_w, height=button_h)
-save_dirs.configure(bg='purple2')
+# save_dirs.configure(bg='purple2')
 
 global boolvar
 merge_bool = tk.BooleanVar()
 merge_bool.set(False)
 
-merge_tick = tk.Checkbutton(app, text = "merge?", variable = merge_bool)
+merge_tick = tk.Checkbutton(app, text = "merge?", foreground="black", borderwidth=3, background="grey", font=("Arial", 12),variable = merge_bool)
 merge_tick.place(x=button_w*2,y=0, width=button_w, height=button_h)
-merge_tick.configure(bg='orange2')
+# merge_tick.configure(bg='orange2')
 
-clear = tk.Button(app, text='CLEAR', command=clear_folders)
+clear = tk.Button(app, text='CLEAR', foreground="black", borderwidth=3, background="grey", font=("Arial", 12),command=clear_folders)
 clear.place(x=button_w*3,y=0, width=button_w, height=button_h)
-clear.configure(bg='red2')
+# clear.configure(bg='red2')
 
-run_button = tk.Button(app, text="RUN !", command= lambda:run_button_callback(merge_bool,out))
+run_button = tk.Button(app, text="RUN !", foreground="black", borderwidth=3, background="grey", font=("Arial", 12),command= lambda:run_button_callback(merge_bool,out))
 run_button.place(x=button_w*4,y=0, width=button_w, height=button_h)
-run_button.configure(bg='green2')
+# run_button.configure(bg='green2')
 
 # Start the Tkinter event loop
 app.mainloop()
