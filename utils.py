@@ -2,14 +2,17 @@ import os
 import shutil
 import pathlib
 import h5py
+from scipy import sparse
+from sklearn.metrics.pairwise import cosine_similarity
 from scipy.signal import butter, filtfilt, sosfiltfilt, lfilter
-from scipy.optimize import curve_fit
+from scipy.optimize import curve_fit, minimize
 from scipy.fftpack import rfft, irfft, rfftfreq
-from sklearn.manifold import TSNE
+from sklearn.manifold import TSNE, MDS
 from scipy.stats import ttest_ind
 from sklearn.cluster import KMeans
 from sklearn.mixture import BayesianGaussianMixture
 from sklearn.decomposition import PCA
+from tqdm import tqdm
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -184,6 +187,127 @@ def TSNE_embedding(data=None, **kwargs):
     transformed = tsne.fit_transform(transformed)
 
     return transformed
+
+def MDA_embedding(data, ndim=3, smoothness=1, norm_mode=0):
+
+    '''
+    Mutual Distances Aproximation:
+    
+    This is a dimensionality reduction algorithm that tries to project the trajectory of
+    the state of a high-dimensional dynamical system by conserving the mutual distances between
+    all the state variables at each time point.
+     
+    args:
+    
+    - data (array-like):
+        data matrix in the shape n_features X n_variables
+    - ndim (int):
+        dimensionality of the embedding. For optimal 3d-visualization, use ndim=3
+    - smoothness (float):
+        weight of the smoothness penality used during the oprimization. 
+    - norm_mode (int):
+        can be 0, 1 or 2. specify a normalization method for step 4, se below
+
+      '''
+
+    ### step 1- compute cosine distance bettwen cells
+    data_sparse = sparse.csr_matrix(data.T)
+    distance = 1-cosine_similarity(data_sparse)
+
+    ### step 2- project the distances in lower dimensional space using MDS
+    ndims = 3
+    mds_c = MDS(n_components=ndims, dissimilarity='precomputed',random_state=40, normalized_stress='auto')
+    dist_mds = mds_c.fit_transform(distance)
+
+    ### step 3- normalize the distances and project on the unit sphere
+    norms = np.linalg.norm(dist_mds, axis=1)
+    coordinates = dist_mds / norms[:, np.newaxis]
+    coordinates = coordinates / np.linalg.norm(coordinates, axis=1)[:, np.newaxis]
+
+    ## compare with random
+    # coordinates = np.random.uniform(-1,1,size=(data.shape[0],3))
+    # coordinates = coordinates / np.linalg.norm(coordinates, axis=1)[:, np.newaxis]
+    # print(coordinates.shape)
+
+    ### step 4- normalize all the data between 0 and 2 (the values of each variable will be considered as distances to the fixed points)
+
+    if norm_mode == 0:
+        # type 1: normalize each variable across time independently
+        data_norm = (data - np.min(data,axis=0)) / (np.max(data,axis=0) - np.min(data,axis=0))*2
+
+    elif norm_mode == 1:
+        # type 2: normalize each state vector independently. This should make each point in the embedding represent the istantaneous 
+        # distances between the state variables
+        data_norm = (data - np.min(data, axis=1)[:,np.newaxis]) / (np.max(data, axis=1)[:,np.newaxis] - np.min(data, axis=1)[:,np.newaxis])*2
+
+    else:
+        # type 3: normalize all the variables over time, together
+        data_norm = (data - np.min(data)) / (np.max(data) - np.min(data))*2
+
+    ### step 5- represent the state of the system at each time as a 3d point inside the unit sphere. 
+    #    we will minimize the difference between the distiances in the embedding (from fixed points and the state point)
+    #    and the values of the variables, at each time point.
+
+    # Objective function to minimize
+    def stress_function(point, target_state, coords, penalty_weight, past_point=None):
+        # calculate euclidean distances
+        distances = np.sqrt(np.sum((coords-point)**2, axis=1))
+        stress = np.sqrt(np.sum((distances - target_state)**2)/target_state.shape[0])
+
+        if past_point is not None:
+            # add penalty, defined as squared euclidean distance between previous and current point
+            penalty = np.sum((point-past_point)**2)
+            stress += penalty * penalty_weight
+
+        return stress
+
+    # Initial guess for the unknown point (center of the circle)
+    initial_guess = np.zeros(ndims)
+    # define the weight of the smoothness penalty
+    smoothness = 1
+    # Optimize the position of the unknown point
+    result = []
+    optimized_distances = []
+    rmses = []
+    residuals = []
+
+    for t,target_state in enumerate(tqdm(data_norm)):
+
+        if t >0:
+            args = (target_state, coordinates, smoothness, result[t-1].x)
+        else:
+            args = (target_state, coordinates, smoothness)
+
+        res = minimize(stress_function, initial_guess, args=args, method='L-BFGS-B')
+
+        # set the next initial guess with curretn guess
+        initial_guess = res.x
+
+        # save reuslts
+        result.append(res)
+
+        if not res.success:
+            print('Warning: optimizer exited with negative status at iteration %d'%t)
+        
+        # save optimized distances
+        opt_dist = np.sqrt(np.sum((coordinates-res.x)**2, axis=1))
+        optimized_distances.append(opt_dist)
+
+        # compute the  residuals and rmse
+        residual = (target_state - opt_dist)**2
+        residuals.append(residual)
+        rmse = np.sqrt(np.sum(residual)/target_state.shape[0])
+        rmses.append(rmse)
+        
+    result = np.array(result)
+    optimized_distances = np.array(optimized_distances)
+    residuals = np.array(residuals)
+
+    # retrive coordinates
+    projected_data = np.array([r.x for r in result])
+
+    return projected_data
+
 
 def k_means(data, n_clusters):
 
