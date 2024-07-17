@@ -314,7 +314,7 @@ class GUI:
 
         l = self.plot1.add_label('embeding', "BW.TLabel")
         l = l.grid(row=0,column=1,sticky='w') 
-        m = self.plot1.add_menu(self.pops_embed, ["pca", "umap", "tsne"])
+        m = self.plot1.add_menu(self.pops_embed, ["pca", "pca","umap", "tsne"])
         m.grid(row=0,column=2,sticky='w')
 
         l = self.plot1.add_label('n_clusers', "BW.TLabel",)
