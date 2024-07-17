@@ -458,8 +458,10 @@ class Rec:
         stims, 
         trials_types, 
         ntrials, 
+        normalize=True,
         median=False,
-        include_peri_act=False,
+        avg_trials=False,
+        include_peri_act=True,
         get_shuffle=False):
 
         ntrials_types = len(stims)*len(trials_types)
@@ -476,8 +478,9 @@ class Rec:
                         if not include_peri_act:
                             s,e = c.analyzed_trials[stim][ttype]['window']
                             t = t[s:e]
-                    
-                        t = z_norm(t)
+
+                        if normalize:
+                            t = z_norm(t)
                         trial.append(t)
 
                     trial = check_len_consistency(trial)
@@ -488,6 +491,8 @@ class Rec:
         psths = np.array(psths)
         if median:
             psths = np.median(psths,axis=-1)[:,:,:,np.newaxis]
+        if avg_trials:
+            psths = np.mean(psths,axis=1)[:,np.newaxis,:,:]
 
         print(psths.shape)
 
