@@ -4,6 +4,7 @@ from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
 from matplotlib import colors
 from matplotlib import cm,patches
+from matplotlib.animation import FuncAnimation, writers, FFMpegWriter
 from scipy.signal import convolve2d
 import warnings
 
@@ -938,7 +939,7 @@ def plot_multipleStim(
 
                 stim_l = cell.sync.sync_ds[stim][trials_[0]]['trial_len']
 
-                if stim_func in globals() and False:
+                if stim_func in globals():
 
                     func = globals()[stim_func]
                     func(frames_tot=int(frames_tot), stim_l=stim_l, ax=axs_T[0], pad_l=pad_l, fr=sf)
@@ -1608,3 +1609,103 @@ def plot_histogram(
     # plt.show()
 
     return plt.gca()
+
+def animate_traj(pos, mode='rot', cmap='magma', save_filename=None, proj_3d=True):
+
+    '''
+    Draw a 3d animated trajectory using the matrix defined by pos.
+    '''
+
+    def update_traj_3d(t, pos, scat, line):
+                
+        p = pos[:t, :3]
+        scat._offsets3d = (p[:,0], p[:,1], p[:,2])
+        scat.set_color(cmap(norm(time[:t])))
+
+        line.set_data_3d(pos[:t, :].T)
+        # line.set_color(cmap(norm(time[t])))
+
+        ax.view_init(elev=20., azim=t)
+        
+        # plt.suptitle('Neural State Space - %d sec'%(t/31.9), fontsize=15)
+
+        return scat,line
+
+    def update_rot_3d(i,pos, scat, line):
+                
+        ax.view_init(elev=20., azim=i)
+        
+        return scat,
+    
+    def update_traj(t, pos, scat, line):
+
+        scat.set_offsets(pos[:t, :2])
+        scat.set_color(cmap(norm(time[:t])))
+
+        line.set_data(pos[:t, :].T)
+        
+        # plt.suptitle('Neural State Space - %d sec'%(t/31.9), fontsize=15)
+        
+        return scat,
+
+    # pos = np.load(pos_file)
+    trial_l = pos.shape[0]
+    cmap = cm.get_cmap(cmap)
+    time = np.arange(trial_l)
+    norm = colors.Normalize(vmin=0, vmax=trial_l)
+
+    # Attaching 3D axis to the figure
+    fig = plt.figure(figsize=(8,8))
+    if proj_3d: ax = fig.add_subplot(1,1,1,projection="3d")
+    else: ax = fig.add_subplot(1,1,1)
+
+    plt.suptitle('Neural State Space', fontsize=15)
+
+    # Create lines initially without data
+
+    if proj_3d:
+        scat = ax.scatter([], [], [], alpha=0.4, s=16)
+        line = ax.plot(pos[0:1,0], pos[0:1,1], pos[0:1,2], c='k', alpha=0.7)[0]
+    else: 
+        scat = ax.scatter(pos[0,0], pos[0,1], alpha=0.4, s=12)
+        line = ax.plot(pos[0,0], pos[0,1], c='k', alpha=0.7)
+    
+    # Setting the axes properties
+    
+    ax.set_xlabel('dim1', fontsize=10)
+    ax.set_ylabel('dim2', fontsize=10)
+
+    if proj_3d:
+        ax.set(xlim3d=(np.min(pos[:,0]), np.max(pos[:,0])))
+        ax.set(ylim3d=(np.min(pos[:,1]), np.max(pos[:,1])))
+        ax.set(zlim3d=(np.min(pos[:,2]), np.max(pos[:,2])))
+        ax.set_zlabel('dim3', fontsize=10)
+        ax.view_init(elev=0, azim=0)
+
+        if mode=='rot':
+            func = update_rot_3d
+            frames = range(360)
+            interval = 20
+        else:
+            func = update_traj_3d
+            frames = range(0,trial_l)
+            interval = 10
+    else:
+        ax.set(xlim=(np.min(pos[:,0]), np.max(pos[:,0])))
+        ax.set(ylim=(np.min(pos[:,1]), np.max(pos[:,1])))
+
+        func = update_traj
+        frames = range(trial_l)
+        interval = 20
+
+    ax.grid(True)
+    fig.tight_layout()
+
+    # Creating the Animation object
+    ani = FuncAnimation(
+        fig, func, frames=frames, fargs=(pos, scat, line), interval=interval)
+
+    if save_filename != None:
+        ani.save(save_filename, writer='ffmpeg', fps=15.5, dpi=300)
+
+    plt.show()
