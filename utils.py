@@ -188,10 +188,10 @@ def TSNE_embedding(data=None, **kwargs):
 
     return transformed
 
-def MDA_embedding(data, ndim=3, smoothness=1, norm_mode=0):
+def MDR_embedding(data, ndims=3, smoothness=1, norm_mode=0):
 
     '''
-    Mutual Distances Aproximation:
+    Mutual Distances Reduction:
     
     This is a dimensionality reduction algorithm that tries to project the trajectory of
     the state of a high-dimensional dynamical system by conserving the mutual distances between
@@ -215,8 +215,9 @@ def MDA_embedding(data, ndim=3, smoothness=1, norm_mode=0):
     distance = 1-cosine_similarity(data_sparse)
 
     ### step 2- project the distances in lower dimensional space using MDS
-    ndims = 3
-    mds_c = MDS(n_components=ndims, dissimilarity='precomputed',random_state=40, normalized_stress='auto')
+    mds_c = MDS(n_components=ndims, dissimilarity='precomputed',random_state=40)
+    mds_c.__setattr__('normalized_stress', 'auto')
+
     dist_mds = mds_c.fit_transform(distance)
 
     ### step 3- normalize the distances and project on the unit sphere
@@ -263,8 +264,6 @@ def MDA_embedding(data, ndim=3, smoothness=1, norm_mode=0):
 
     # Initial guess for the unknown point (center of the circle)
     initial_guess = np.zeros(ndims)
-    # define the weight of the smoothness penalty
-    smoothness = 1
     # Optimize the position of the unknown point
     result = []
     optimized_distances = []
