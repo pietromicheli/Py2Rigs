@@ -100,7 +100,7 @@ class Rec:
                 warnings.warn("No Sync found in the loader!\n", RuntimeWarning)
 
                 frames = np.array([self.params['baseline_length']*self.sf,
-                                self.rec_length - self.params['baseline_length']*self.sf])
+                                self.rec_length - self.params['max_aftertrial']*self.sf])
                 stim_dict = {'stim':[0]}
 
                 np.save('sync_temp.npy',frames)
@@ -137,7 +137,12 @@ class Rec:
 
                         self.dataRaw -= self.loader.Fneu*self.params['neuropil_corr']
 
-                    baseline = np.mean(self.dataRaw[:,:self.sync.sync_tps[0]],axis=1)
+                    if self.params["baseline_indices"] is not None:
+                        bs_indices = self.params["baseline_indices"]
+                    else:
+                        bs_indices = [0,self.sync.sync_tps[0]]
+                        
+                    baseline = np.mean(self.dataRaw[:,bs_indices[0]:bs_indices[1]],axis=1)
                     baseline = np.expand_dims(baseline,1)
                     self.dataNorm = (self.dataRaw - baseline) / baseline
 
@@ -755,11 +760,18 @@ class Rec:
                 if self.params["baseline_extraction_neuData"] == 1:
 
                     # extract only one baseline for each stimulus
-                    mean_baselines = np.mean(
+                    if self.params["baseline_indices"] is not None:
+
+                        mean_baselines = np.mean(
+                                    self.dataRaw[:, self.params["baseline_indices"][0]: 
+                                                self.params["baseline_indices"][1]], axis=1)
+                    else:
+                        
+                        mean_baselines = np.mean(
                                     self.dataRaw[:,self.sync.sync_ds[stim]["stim_window"][0] - 
                                                 int(self.params["baseline_length"]*self.sf) : 
                                                 self.sync.sync_ds[stim]["stim_window"][0]]
-                                    , axis=1)
+                                        , axis=1)
 
                 pbar = tqdm(list(self.sync.sync_ds[stim].keys())[:-1]) # last item is stim_window
                 for trial_type in pbar :  
