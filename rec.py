@@ -47,6 +47,12 @@ class Rec:
         self.populations = []
         self.dataBehav_analyzed = {}
 
+        # INPUT SANITY CHECKS
+        # check if the last frame indexed by sync falls within the recording
+        if self.sync.sync_tps[-1] > self.rec_length:
+            print('ERROR: the sync indexes frames that falls outside the recording!\n')
+            return
+
         # IF THE LOADER CONTAINS PRE-EXTRACTE DATA, LOAD THEM!
         if self.precomputed == True:
             
@@ -90,7 +96,7 @@ class Rec:
             self.load_params()
 
             # sample frequency
-            if self.params['binsize'] >0: self.sf = int(self.params['sf']/self.params['binsize']) # DOUBLE CHECK!! #
+            if self.params['binsize'] > 0: self.sf = 1/self.params['binsize'] # DOUBLE CHECK!! #
             else: self.sf = self.params['sf']
 
             # if no sync obj is found inside the loader, 
@@ -152,6 +158,69 @@ class Rec:
                     # resps_zscore = ((resps.T - mean_baselines)/resps_std).T
                     self.dataNorm = z_norm(self.dataRaw)
 
+
+    def _bin_data_(self, binsize, mode=None):
+
+        """
+        Bin data and sync according to binsize
+        """
+
+        if mode == None:
+            if self.dtype == 'fluo': mode = 'mean'
+            else: mode = 'sum'
+
+        if mode == 'sum' : func = np.sum
+        if mode == 'mean' : func = np.mean
+
+        print("> Binning sync ...",)
+
+        # sync signal
+        sync_s = np.zeros(self.rec_length)
+        sync_tps = self.sync.sync_tps
+
+        for i in range(1,len(sync_tps),2):
+            sync_s[sync_tps[i-1]:sync_tps[i]] = 1 
+
+        # bin sync
+        sync_s_binned = np.array([func(sync_s[int((i-1)*binsize):int((i)*binsize)])
+                            for i in tqdm(range(1,int(self.rec_length/binsize)))]).astype(bool)
+        
+        sync_tps_binned = np.argwhere(np.diff(sync_s_binned)).T[0]
+        # save binned sync file .npy
+        filename = 'TTL_tp_binned_%dms.npy'%(binsize/self.params['sf']*1000)
+        np.save(filename, sync_tps_binned)
+        # generate new sync object
+        new_sync =  Sync().generate_data_structure(filename,
+                                                    self.loader.stim_dict_file,
+                                                    self.loader.trials_names)
+        self.sync = new_sync
+        print('OK')
+
+        print("> Binning data ...")
+
+        if hasattr(self.loader,'Fneu'):
+            fneu = True
+            fnew_binned = []
+        else: fneu = False
+
+        data_binned = []
+        for j in tqdm(range(1,int(self.rec_length/binsize))):
+
+            start = int((j-1)*binsize)
+            stop = int(j*binsize)
+            data_binned.append(func(self.loader.dataRaw[:,start:stop], axis=1))
+            if fneu:
+                fnew_binned.append(func(self.loader.Fneu[:,start:stop], axis=1))
+            
+        data_binned = np.array(data_binned).T
+        self.dataRaw = data_binned
+        if fneu:
+            fnew_binned = np.array(fnew_binned).T
+            self.loader.Fneu = fnew_binned
+
+        print(self.sf)
+        print('OK')
+     
     def load_params(self):
 
         """
@@ -189,14 +258,14 @@ class Rec:
 
         return ids
 
-    def extract_all(self, keep_unresponsive=False, save_hdf5_filename:str=None):
+    def extract_all(self, keep_unresponsive=False, save_hdf5_filename:str=None, normalize_behav=True):
 
         """
         Extract neural rsponse from cells and behavioral data if available
         """
 
-        cells = self._extract_data_(keep_unresponsive=keep_unresponsive)
-        behavior = self._extract_dataBehav_()
+        cells = self.extract_data(keep_unresponsive=keep_unresponsive)
+        behavior = self.extract_dataBehav(normalize=normalize_behav)
 
         if save_hdf5_filename != None:
             # save analyzed results in hdf5 file
@@ -541,53 +610,7 @@ class Rec:
 
         return states, psths, stiml
     
-    def _bin_data_(self, binsize, mode='sum'):
-
-        """
-        Bin data and sync according to binsize
-        """
-
-        if mode == 'sum' : func = np.sum
-        if mode == 'mean' : func = np.mean
-
-        print("> Binning sync ...",)
-
-        # sync signal
-        sync_s = np.zeros(self.rec_length)
-        sync_tps = self.sync.sync_tps
-
-        for i in range(1,len(sync_tps),2):
-            sync_s[sync_tps[i-1]:sync_tps[i]] = 1 
-
-        # bin sync
-        sync_s_binned = np.array([func(sync_s[int((i-1)*binsize):int((i)*binsize)])
-                            for i in tqdm(range(1,int(self.rec_length/binsize)))]).astype(bool)
-        
-        sync_tps_binned = np.argwhere(np.diff(sync_s_binned)).T[0]
-        # save binned sync file .npy
-        filename = 'TTL_tp_binned_%dms.npy'%(binsize/self.params['sf']*1000)
-        np.save(filename, sync_tps_binned)
-        # generate new sync object
-        new_sync =  Sync().generate_data_structure(filename,
-                                                    self.loader.stim_dict_file,
-                                                    self.loader.trials_names)
-        self.sync = new_sync
-        print('OK')
-
-        print("> Binning data ...")
-        data_binned = []
-        for j in tqdm(range(1,int(self.rec_length/binsize))):
-
-            start = int((j-1)*binsize)
-            stop = int(j*binsize)
-            data_binned.append(func(self.loader.dataRaw[:,start:stop], axis=1))
-            
-        data_binned = np.array(data_binned).T
-        print('OK')
-
-        self.dataRaw = data_binned
-
-    def _extract_dataBehav_(self, dataBehav_names=[]):
+    def extract_dataBehav(self, dataBehav_names=[], normalize=True):
 
         """ 
         Extract the supllementary data (e.g pupil, treadmill ecc) if present
@@ -621,17 +644,21 @@ class Rec:
                 self.dataBehav_analyzed[data_name] |= {stim:{}}
                 print('\n  Extracting stim: %s'%stim)
 
-
                 if self.params["baseline_extraction_behavData"] == 1:
 
-                    # extract only one baseline and std for each stimulus
-                    baseline = data[self.sync.sync_ds[stim]["stim_window"][0] - 
-                                        int(self.params["baseline_length"]*self.sf) : 
-                                        self.sync.sync_ds[stim]["stim_window"][0]]
+                    if self.params["baseline_indices"] is not None:
 
-                    mean_baseline = np.mean(baseline)
-                    std = np.std(baseline)
-                
+                        mean_baseline = np.mean(
+                                    data[self.params["baseline_indices"][0]: 
+                                                self.params["baseline_indices"][1]])
+                    else:
+                        
+                        mean_baseline = np.mean(
+                                    data[self.sync.sync_ds[stim]["stim_window"][0] - 
+                                                int(self.params["baseline_length"]*self.sf) : 
+                                                self.sync.sync_ds[stim]["stim_window"][0]])
+
+                    
                 # get max value whithin the stimulus block
                 stim_max = data[self.sync.sync_ds[stim]['stim_window'][0]:
                                 self.sync.sync_ds[stim]['stim_window'][1]].max()
@@ -716,7 +743,7 @@ class Rec:
 
         return self.dataBehav_analyzed
         
-    def _extract_data_(self, keep_unresponsive: bool=False):
+    def extract_data(self, keep_unresponsive: bool=False):
 
         """
         Extract the Data fro all the cells present in the recording files.
@@ -807,6 +834,7 @@ class Rec:
                                             trial[0] + trial_len + pause_len].copy()
                         
                         trials_raw.append(resps)
+                        print(resps.shape)
                         
                         # if data contains fluo traces, compute df/f normalization
                         if self.dtype == 'fluo':
@@ -839,11 +867,12 @@ class Rec:
                     
                     # calculate quality indices over the trials and udate the best qis
                     # PENDING: implementation of ttest-based qi
-
                     qis = []
                     for cix in range(self.ncells):
+
                         filtered = filter(trials_norm[:,cix,:], 0.3)
                         zscored = z_norm(filtered)
+
                         if self.params['qi_metrics'] == 0 and trials_norm.shape[0] > 1 and np.any(trials_norm):
                             qis.append(compute_QI(zscored, (int(self.params['pre_trial']*self.sf),-1)))
                         else:
