@@ -96,7 +96,7 @@ class InputFrame:
         self.output_frame = ttk.Frame(self.master, style='TFrame')
         self.output_frame.grid(row=0, column=1, columnspan=1, sticky='nsew')
 
-        self.output_text = tk.Text(self.output_frame, wrap="word", bg='black', fg='white', bd=0, width=70, height=15)
+        self.output_text = tk.Text(self.output_frame, wrap="word", bg='black', fg='white', bd=0, width=40, height=10)
         self.output_text.grid(row=0, column=0, pady=20)
         
         # show usage message
@@ -510,16 +510,16 @@ class GUI:
 
         if self.cell_index < len(cells_pop):
             self.cell_index += 1
-            self.plot_act(avg=False)
+            self.plot_act(avg=False, heatmaps=False)
 
     def change_cell_prev(self):
 
         self.cell_index -= 1
 
         if self.cell_index >= 0:
-            self.plot_act(avg=False)
+            self.plot_act(avg=False, heatmaps=False)
 
-    def plot_act(self, avg=True):
+    def plot_act(self, avg=True, heatmaps=True):
         
         pop = int(self.act_pop.get())
         rec_id = self.act_recs.get()
@@ -579,7 +579,7 @@ class GUI:
 
         # generate heatmaps
         # check if need to update
-        if pop != self.old_pop:
+        if heatmaps:
         
             fig = plot_heatmaps(cells_pop, 
                                 stim_dict,

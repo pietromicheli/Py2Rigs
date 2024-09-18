@@ -62,13 +62,13 @@ class Cell:
         """
 
         # first, check if passes minimal threshold on zscore
-        if z_norm(self.rec.dataNorm[self.id]).max() < self.rec.params['zthreshold']:
+        if abs(z_norm(self.rec.dataNorm[self.id])).max() < self.rec.params['zthreshold']:
             self.responsive = False
             return self.responsive
 
         # use _iscell?
-        if self.rec.params['use_iscell']:
-            if not self.rec.loader.iscell[self.id][1] >= 0.7: # use 0.7 as prob threshold
+        if hasattr(self.rec.loader, 'iscell'):
+            if not self.rec.loader.iscell[self.id][1] >= self.rec.params['use_iscell']: 
                 self.responsive = False
                 return self.responsive
 

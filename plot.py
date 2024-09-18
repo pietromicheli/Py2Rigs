@@ -1610,10 +1610,12 @@ def plot_histogram(
 
     return plt.gca()
 
-def animate_traj(pos, mode='rot', cmap='magma', save_filename=None, proj_3d=True):
+def animate_traj(pos, mode=1, cmap='magma', save_filename=None, proj_3d=True, interval=20):
 
     '''
     Draw a 3d animated trajectory using the matrix defined by pos.
+    pos is assumed to have the following dimension: 
+    (n_trial_types, n_trials, trial_length, 3)
     '''
 
     def update_traj_3d(t, pos, scat, line):
@@ -1641,8 +1643,6 @@ def animate_traj(pos, mode='rot', cmap='magma', save_filename=None, proj_3d=True
 
         scat.set_offsets(pos[:t, :2])
         scat.set_color(cmap(norm(time[:t])))
-
-        line.set_data(pos[:t, :].T)
         
         # plt.suptitle('Neural State Space - %d sec'%(t/31.9), fontsize=15)
         
@@ -1659,13 +1659,17 @@ def animate_traj(pos, mode='rot', cmap='magma', save_filename=None, proj_3d=True
     if proj_3d: ax = fig.add_subplot(1,1,1,projection="3d")
     else: ax = fig.add_subplot(1,1,1)
 
-    plt.suptitle('Neural State Space', fontsize=15)
+    plt.suptitle('Neural Embedding', fontsize=15)
 
     # Create lines initially without data
 
     if proj_3d:
-        scat = ax.scatter([], [], [], alpha=0.4, s=16)
-        line = ax.plot(pos[0:1,0], pos[0:1,1], pos[0:1,2], c='k', alpha=0.7)[0]
+        if mode==0:
+            scat = ax.scatter(pos[:,0], pos[:,1], pos[:,2], color=cmap(norm(time)), alpha=0.4, s=16)
+            line = ax.plot(pos[:,0], pos[:,1], pos[:,2], c='k', alpha=0.4)[0]
+        else:
+            scat = ax.scatter([], [], [], alpha=0.4, s=16)
+            line = ax.plot(pos[0:1,0], pos[0:1,1], pos[0:1,2], c='k', alpha=0.4)[0]
     else: 
         scat = ax.scatter(pos[0,0], pos[0,1], alpha=0.4, s=12)
         line = ax.plot(pos[0,0], pos[0,1], c='k', alpha=0.7)
@@ -1682,30 +1686,27 @@ def animate_traj(pos, mode='rot', cmap='magma', save_filename=None, proj_3d=True
         ax.set_zlabel('dim3', fontsize=10)
         ax.view_init(elev=0, azim=0)
 
-        if mode=='rot':
+        if mode==1:
             func = update_rot_3d
             frames = range(360)
-            interval = 20
         else:
             func = update_traj_3d
             frames = range(0,trial_l)
-            interval = 10
     else:
         ax.set(xlim=(np.min(pos[:,0]), np.max(pos[:,0])))
         ax.set(ylim=(np.min(pos[:,1]), np.max(pos[:,1])))
 
         func = update_traj
         frames = range(trial_l)
-        interval = 20
 
     ax.grid(True)
     fig.tight_layout()
 
     # Creating the Animation object
     ani = FuncAnimation(
-        fig, func, frames=frames, fargs=(pos, scat, line), interval=interval)
+        fig, func, frames=frames, fargs=(pos, scat, line), interval=interval, blit=True)
 
     if save_filename != None:
-        ani.save(save_filename, writer='ffmpeg', fps=15.5, dpi=300)
+        ani.save(save_filename, writer='ffmpeg', fps=30*10, dpi=300)
 
     plt.show()

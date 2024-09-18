@@ -57,7 +57,7 @@ class Batch:
 
         # self.dataBehav_intersection = list(dataBehav_intersection)
 
-        ### or keep all the dataBehav available for from each recordings
+        ### or keep all the dataBehav available from each recordings
 
         self.dataBehav = []
         for rec in recs_list: 
@@ -124,8 +124,8 @@ class Batch:
         Extract neural and behavioral data from all the recordings
         """
         
-        behavior = self._extract_dataBehav_()
-        cells = self._extract_data_(keep_unresponsive=keep_unresponsive)
+        behavior = self.extract_dataBehav()
+        cells = self.extract_data(keep_unresponsive=keep_unresponsive)
         self.responsive = self.get_responsive()
         
         return cells
@@ -414,7 +414,7 @@ class Batch:
 
         return stats
 
-    def _extract_data_(self, keep_unresponsive=False):
+    def extract_data(self, keep_unresponsive=False):
 
         """
         Extract the neuaral data from all cells in each recording and assign new ids.
@@ -433,7 +433,7 @@ class Batch:
             groups.append(group_id)
 
             # retrive cells from each recording
-            rec._extract_data_(keep_unresponsive)
+            rec.extract_data(keep_unresponsive)
 
             for id,cell in rec.cells.items():
 
@@ -455,7 +455,7 @@ class Batch:
 
         return self.cells
 
-    def _extract_dataBehav_(self):
+    def extract_dataBehav(self):
 
         """
         Extract the behavioral data (eye tracking, tredmill ecc.) from each recording.
@@ -468,7 +468,7 @@ class Batch:
             print('\nRec %d :'%rec_id)
 
             if not rec.dataBehav: continue
-            rec._extract_dataBehav_(dataBehav_names=list(rec.dataBehav.keys()))
+            rec.extract_dataBehav(dataBehav_names=list(rec.dataBehav.keys()))
 
             for dataBehav_name in self.dataBehav:
 

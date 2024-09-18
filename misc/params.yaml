@@ -8,10 +8,10 @@
   binsize : 0
 
   # maximum time in seconds after trial to keep.
-  max_aftertrial: 5
+  max_aftertrial: 2
   
   # number time in seconds to use for extracting the baseline activity.
-  baseline_length : 2
+  baseline_length : 3
 
   # number seconds before trial onset that will be included when extractin the trial window
   pre_trial : 2
@@ -39,10 +39,10 @@
   qi_metrics : 0
 
   # quality index threshold above which an roi is considered responsive
-  qi_threshold : 0.45
+  qi_threshold : 0.3
 
   # wether to keep only the cells that passed the suite2p classifier
-  use_iscell: 0
+  use_iscell: 0.5
 
   # z-score threshold above which spkikes are kept
   spks_threshold : 1.5
@@ -54,4 +54,4 @@
     
   # Only gor fluo data: constant by which to scale the neuropil signal before subtracting it
   # to the raw fluoressence signal
-  neuropil_corr : 0.8
+  neuropil_corr : 0.7
